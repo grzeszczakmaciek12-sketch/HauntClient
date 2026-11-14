@@ -1,46 +1,28 @@
+plugins {
+    id 'fabric-loom' version '1.9-SNAPSHOT'
+    id 'maven-publish'
+}
 
-name: Build HauntClient
+version = project.mod_version
+group = project.maven_group
 
-on:
-  workflow_dispatch:
-  push:
-    branches:
-      - main
+base { archivesName = project.archives_base_name }
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
+repositories { mavenCentral() }
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+}
 
-      - name: Setup Java
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: 21
+processResources {
+    inputs.property "version", project.version
+    filesMatching("fabric.mod.json") { expand "version": project.version }
+}
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: 8.10.2
-
-      - name: Check files
-        run: |
-          echo "Repository root:"
-          ls -la
-          echo "Project folder:"
-          ls -la hauntclient-fabric-1.21.4
-          test -f hauntclient-fabric-1.21.4/build.gradle
-
-      - name: Build mod
-        run: gradle -p hauntclient-fabric-1.21.4 build
-
-      - name: Upload JAR
-        uses: actions/upload-artifact@v4
-        with:
-          name: HauntClient
-          path: hauntclient-fabric-1.21.4/build/libs/*.jar
-          if-no-files-found: error
-
+java {
+    toolchain { languageVersion = JavaLanguageVersion.of(21) }
+    withSourcesJar()
+}

@@ -26,13 +26,13 @@ jobs:
         with:
           gradle-version: 8.10.2
 
-      - name: Check files
+      - name: Check project
         run: |
-          echo "Repository root:"
+          echo "Checking project folder..."
           ls -la
-          echo "Project folder:"
           ls -la hauntclient-fabric-1.21.4
           test -f hauntclient-fabric-1.21.4/build.gradle
+          test -f hauntclient-fabric-1.21.4/settings.gradle
 
       - name: Build mod
         run: gradle -p hauntclient-fabric-1.21.4 build
@@ -43,3 +43,4 @@ jobs:
           name: HauntClient
           path: hauntclient-fabric-1.21.4/build/libs/*.jar
           if-no-files-found: error
+

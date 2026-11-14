@@ -52,6 +52,17 @@ public class HauntScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mx,double my,int button){
+        if(button==1){
+            int w=470,h=310,x=(width-w)/2,y=(height-h)/2;
+            List<HauntModules.Module> list=visibleModules();
+            for(int i=0;i<list.size();i++){
+                int top=y+126+i*37;
+                if(list.get(i)==HauntModules.Module.XRAY && mx>=x+14 && mx<=x+w-14 && my>=top && my<=top+31){
+                    client.setScreen(new XrayBlockScreen(this));
+                    return true;
+                }
+            }
+        }
         if(button==0){
             int w=470,h=310,x=(width-w)/2,y=(height-h)/2,tx=x+14;
             for(HauntModules.Category c:HauntModules.Category.values()){

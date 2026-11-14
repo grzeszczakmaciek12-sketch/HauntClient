@@ -107,6 +107,7 @@ public final class HauntModules {
             followTarget = null;
             return;
         }
+
         PlayerEntity nearest = null;
         double bestDistance = 32.0 * 32.0;
         for (PlayerEntity candidate : client.world.getPlayers()) {
@@ -118,19 +119,34 @@ public final class HauntModules {
             }
         }
         followTarget = nearest;
-        if (nearest == null) return;
+        // Camera smoothing is applied by the render-frame callback below.
+    }
 
-        // Follow Assist only turns the camera. The player chooses when to move (hold W).
+    /**
+     * Interpolates the camera every rendered frame instead of applying a visible
+     * step once per game tick. This keeps the on-screen tracking smooth at
+     * different frame rates while leaving player movement and attacks untouched.
+     */
+    public static void renderFollowAssist(float tickDelta) {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (!isEnabled(Module.FOLLOW_PLAYER) || client.player == null
+            || client.world == null || followTarget == null || !followTarget.isAlive()) return;
+
         var from = client.player.getEyePos();
-        var to = nearest.getEyePos();
+        var to = followTarget.getEyePos();
         double dx = to.x - from.x;
         double dy = to.y - from.y;
         double dz = to.z - from.z;
         double horizontal = Math.sqrt(dx * dx + dz * dz);
         float wantedYaw = (float) (Math.toDegrees(Math.atan2(dz, dx)) - 90.0);
         float wantedPitch = (float) -Math.toDegrees(Math.atan2(dy, horizontal));
-        float yaw = client.player.getYaw() + MathHelper.wrapDegrees(wantedYaw - client.player.getYaw()) * 0.32f;
-        float pitch = client.player.getPitch() + (wantedPitch - client.player.getPitch()) * 0.32f;
+
+        // Exponential interpolation makes the smoothing independent of FPS.
+        float frameFactor = 1.0f - (float) Math.exp(-12.0f * Math.max(0.0f, tickDelta));
+        float yaw = client.player.getYaw()
+            + MathHelper.wrapDegrees(wantedYaw - client.player.getYaw()) * frameFactor;
+        float pitch = client.player.getPitch()
+            + (wantedPitch - client.player.getPitch()) * frameFactor;
         client.player.setYaw(yaw);
         client.player.setPitch(MathHelper.clamp(pitch, -90.0f, 90.0f));
     }

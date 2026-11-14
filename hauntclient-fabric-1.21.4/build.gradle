@@ -11,6 +11,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    defaults:
+      run:
+        working-directory: hauntclient-fabric-1.21.4
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,13 +30,14 @@ jobs:
         with:
           gradle-version: 8.10.2
 
-      - name: Check project files
+      - name: Verify Gradle files
         run: |
+          pwd
           ls -la
-          ls -la hauntclient-fabric-1.21.4
+          test -f build.gradle
+          test -f settings.gradle
 
       - name: Build mod
-        working-directory: hauntclient-fabric-1.21.4
         run: gradle build
 
       - name: Upload JAR

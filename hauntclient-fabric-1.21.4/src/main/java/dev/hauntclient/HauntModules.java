@@ -40,7 +40,8 @@ public final class HauntModules {
     private static boolean gammaCaptured;
     private static boolean previousAllowFlying;
     private static boolean previousFlying;
-    private static int scanCooldown;
+    private static int scanIndex;
+    private static BlockPos scanOrigin;
     private static PlayerEntity followTarget;
     private static final List<String> ORE_RESULTS = new ArrayList<>();
     private static final Set<String> XRAY_BLOCKS = new HashSet<>(List.of("coal_ore", "deepslate_coal_ore", "iron_ore", "deepslate_iron_ore", "gold_ore", "deepslate_gold_ore", "diamond_ore", "deepslate_diamond_ore", "emerald_ore", "deepslate_emerald_ore", "redstone_ore", "deepslate_redstone_ore", "lapis_ore", "deepslate_lapis_ore", "copper_ore", "deepslate_copper_ore", "ancient_debris"));
@@ -51,6 +52,8 @@ public final class HauntModules {
     public static void toggleXrayBlock(String blockId) {
         if (!XRAY_BLOCKS.remove(blockId)) XRAY_BLOCKS.add(blockId);
         ORE_RESULTS.clear();
+        scanIndex = 0;
+        scanOrigin = null;
     }
     public static int getXrayBlockCount() { return XRAY_BLOCKS.size(); }
 
@@ -69,7 +72,7 @@ public final class HauntModules {
                 var abilities = client.player.getAbilities();
                 abilities.flying = previousFlying && abilities.allowFlying;
             }
-            if (module == Module.XRAY) ORE_RESULTS.clear();
+            if (module == Module.XRAY) { ORE_RESULTS.clear(); scanIndex = 0; scanOrigin = null; }
         } else {
             ENABLED.add(module);
             if (module == Module.FULLBRIGHT && client.options != null) {
@@ -94,9 +97,8 @@ public final class HauntModules {
         }
         if (isEnabled(Module.FOLLOW_PLAYER)) updateFollowAssist(client);
         else followTarget = null;
-        if (isEnabled(Module.XRAY) && client.player != null && client.world != null && scanCooldown-- <= 0) {
-            scanCooldown = 20;
-            scanNearbyOres(client);
+        if (isEnabled(Module.XRAY) && client.player != null && client.world != null) {
+            scanNearbyOresIncrementally(client);
         }
     }
 
@@ -133,19 +135,40 @@ public final class HauntModules {
         client.player.setPitch(MathHelper.clamp(pitch, -90.0f, 90.0f));
     }
 
-    private static void scanNearbyOres(MinecraftClient client) {
-        ORE_RESULTS.clear();
-        BlockPos origin = client.player.getBlockPos();
-        for (int dx = -8; dx <= 8 && ORE_RESULTS.size() < 6; dx++) {
-            for (int dy = -5; dy <= 5 && ORE_RESULTS.size() < 6; dy++) {
-                for (int dz = -8; dz <= 8 && ORE_RESULTS.size() < 6; dz++) {
-                    BlockPos pos = origin.add(dx, dy, dz);
-                    String id = net.minecraft.registry.Registries.BLOCK.getId(client.world.getBlockState(pos).getBlock()).getPath();
-                    if (XRAY_BLOCKS.contains(id)) {
-                        ORE_RESULTS.add(id.replace('_', ' ') + " " + pos.getX() + " " + pos.getY() + " " + pos.getZ());
-                    }
-                }
+    private static void scanNearbyOresIncrementally(MinecraftClient client) {
+        // Spread the same local scan over many ticks to avoid a one-tick CPU spike.
+        final int widthX = 17;
+        final int widthY = 11;
+        final int widthZ = 17;
+        final int total = widthX * widthY * widthZ;
+        final int blocksPerTick = 160;
+
+        if (scanOrigin == null || scanIndex == 0) {
+            scanOrigin = client.player.getBlockPos();
+            ORE_RESULTS.clear();
+        }
+
+        int checked = 0;
+        while (checked < blocksPerTick && scanIndex < total && ORE_RESULTS.size() < 6) {
+            int dx = scanIndex / (widthY * widthZ) - 8;
+            int remainder = scanIndex % (widthY * widthZ);
+            int dy = remainder / widthZ - 5;
+            int dz = remainder % widthZ - 8;
+            BlockPos pos = scanOrigin.add(dx, dy, dz);
+            String id = net.minecraft.registry.Registries.BLOCK.getId(
+                client.world.getBlockState(pos).getBlock()
+            ).getPath();
+            if (XRAY_BLOCKS.contains(id)) {
+                ORE_RESULTS.add(id.replace('_', ' ') + " "
+                    + pos.getX() + " " + pos.getY() + " " + pos.getZ());
             }
+            scanIndex++;
+            checked++;
+        }
+
+        if (scanIndex >= total || ORE_RESULTS.size() >= 6) {
+            scanIndex = 0;
+            scanOrigin = null;
         }
     }
 

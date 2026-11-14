@@ -14,13 +14,14 @@ import java.util.Set;
 public final class HauntModules {
     public enum Module {
         FULLBRIGHT("Fullbright", "Maximum vanilla brightness", Category.RENDER),
-        XRAY("X-Ray Radar", "Nearby ores (singleplayer demo)", Category.RENDER),
+        XRAY("X-Ray Radar", "Radar for ore blocks sent by the server", Category.RENDER),
+        SERVER_DEMO("Server Demo", "Enable permitted server-side test features", Category.HUD),
         COORDINATES("Coordinates", "Show XYZ and dimension", Category.HUD),
         FPS("FPS Counter", "Show current frame rate", Category.HUD),
         KEYSTROKES("Keystrokes", "Show movement key states", Category.HUD),
         ARMOR_HUD("Armor HUD", "Show equipped armor", Category.PLAYER),
         TOGGLE_SPRINT("Toggle Sprint", "Sprint while moving forward", Category.MOVEMENT),
-        FLY("Fly", "Creative-style flight in singleplayer only", Category.MOVEMENT),
+        FLY("Fly", "Flight only when the server grants flight permission", Category.MOVEMENT),
         AIM_TRAINER("Training Reticle", "Practice overlay; no auto-aim or attacks", Category.PLAYER);
 
         public final String title, description;
@@ -43,12 +44,12 @@ public final class HauntModules {
 
     public static void toggle(Module module) {
         MinecraftClient client = MinecraftClient.getInstance();
-        if (module == Module.FLY && !client.isInSingleplayer()) {
-            if (client.player != null) client.player.sendMessage(net.minecraft.text.Text.literal("§cFly demo działa tylko w singleplayerze."), true);
+        if ((module == Module.FLY || module == Module.XRAY) && !isEnabled(Module.SERVER_DEMO)) {
+            if (client.player != null) client.player.sendMessage(net.minecraft.text.Text.literal("§eNajpierw włącz Server Demo w zakładce HUD."), true);
             return;
         }
-        if (module == Module.XRAY && !client.isInSingleplayer()) {
-            if (client.player != null) client.player.sendMessage(net.minecraft.text.Text.literal("§cX-Ray Radar demo działa tylko w singleplayerze."), true);
+        if (module == Module.FLY && client.player != null && !client.player.getAbilities().allowFlying) {
+            client.player.sendMessage(net.minecraft.text.Text.literal("§cSerwer nie przyznał uprawnienia do latania."), true);
             return;
         }
         if (ENABLED.remove(module)) {
@@ -58,9 +59,7 @@ public final class HauntModules {
             }
             if (module == Module.FLY && client.player != null) {
                 var abilities = client.player.getAbilities();
-                abilities.allowFlying = previousAllowFlying;
-                abilities.flying = previousFlying && previousAllowFlying;
-                ORE_RESULTS.clear();
+                abilities.flying = previousFlying && abilities.allowFlying;
             }
             if (module == Module.XRAY) ORE_RESULTS.clear();
         } else {
@@ -74,24 +73,26 @@ public final class HauntModules {
                 var abilities = client.player.getAbilities();
                 previousAllowFlying = abilities.allowFlying;
                 previousFlying = abilities.flying;
-                abilities.allowFlying = true;
+                // Never grant flight locally: the server must allow it first.
                 abilities.flying = true;
             }
         }
     }
 
     public static void tick(MinecraftClient client) {
-        if (isEnabled(Module.FLY) && client.player != null && !client.isInSingleplayer()) {
-            ENABLED.remove(Module.FLY);
+        if (!isEnabled(Module.SERVER_DEMO)) {
+            if (isEnabled(Module.FLY)) ENABLED.remove(Module.FLY);
+            if (isEnabled(Module.XRAY)) ENABLED.remove(Module.XRAY);
+            ORE_RESULTS.clear();
+            return;
         }
-        if (isEnabled(Module.XRAY) && client.player != null && client.world != null) {
-            if (!client.isInSingleplayer()) {
-                ENABLED.remove(Module.XRAY);
-                ORE_RESULTS.clear();
-            } else if (scanCooldown-- <= 0) {
-                scanCooldown = 20;
-                scanNearbyOres(client);
-            }
+        if (isEnabled(Module.FLY) && client.player != null && !client.player.getAbilities().allowFlying) {
+            ENABLED.remove(Module.FLY);
+            client.player.sendMessage(net.minecraft.text.Text.literal("§cSerwer odebrał uprawnienie do latania."), true);
+        }
+        if (isEnabled(Module.XRAY) && client.player != null && client.world != null && scanCooldown-- <= 0) {
+            scanCooldown = 20;
+            scanNearbyOres(client);
         }
     }
 
@@ -119,6 +120,9 @@ public final class HauntModules {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player == null || client.world == null || client.options.hudHidden) return;
         int x = 8, y = 8;
+        if (isEnabled(Module.SERVER_DEMO)) {
+            drawLine(context, "SERVER DEMO: ON", x, y); y += 12;
+        }
         if (isEnabled(Module.FPS)) {
             drawLine(context, "FPS: " + client.getCurrentFps(), x, y); y += 12;
         }
@@ -137,7 +141,7 @@ public final class HauntModules {
             drawLine(context, keys, x, y); y += 12;
         }
         if (isEnabled(Module.XRAY)) {
-            drawLine(context, "X-RAY RADAR • SINGLEPLAYER DEMO", x, y); y += 12;
+            drawLine(context, "X-RAY RADAR • SERVER-SENT BLOCKS ONLY", x, y); y += 12;
             for (String ore : ORE_RESULTS) { drawLine(context, ore, x, y); y += 12; }
         }
         if (isEnabled(Module.AIM_TRAINER)) {

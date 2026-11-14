@@ -9,7 +9,6 @@ import net.minecraft.util.math.MathHelper;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.decoration.ArmorStandEntity;
 import net.minecraft.util.Hand;
-import net.minecraft.client.option.ParticlesMode;
 import org.lwjgl.glfw.GLFW;
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -23,7 +22,7 @@ import java.util.HashSet;
 public final class HauntModules {
     public enum Module {
         FULLBRIGHT("Fullbright", "Maximum vanilla brightness", Category.RENDER),
-        FPS_BOOST("FPS Boost", "Reduce particles and entity shadows", Category.RENDER),
+        FPS_BOOST("FPS Boost", "Disable entity shadows for a lighter render load", Category.RENDER),
         CUSTOM_CROSSHAIR("Custom Crosshair", "Draw a clean purple custom reticle", Category.HUD),
         CPS_COUNTER("CPS Counter", "Show recent mouse clicks per second", Category.HUD),
         XRAY("X-Ray Radar", "Radar for ore blocks sent by the server", Category.RENDER),
@@ -48,7 +47,6 @@ public final class HauntModules {
     private static final Set<Module> ENABLED = EnumSet.noneOf(Module.class);
     private static double previousGamma = 1.0;
     private static boolean gammaCaptured;
-    private static ParticlesMode previousParticles;
     private static boolean previousEntityShadows;
     private static boolean fpsSettingsCaptured;
     private static boolean previousLeftDown;

@@ -1,4 +1,5 @@
 
+# Build workflow for the Fabric 1.21.4 project
 name: Build HauntClient
 
 on:
@@ -43,4 +44,3 @@ jobs:
           name: HauntClient
           path: hauntclient-fabric-1.21.4/build/libs/*.jar
           if-no-files-found: error
-

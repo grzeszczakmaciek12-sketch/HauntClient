@@ -127,8 +127,8 @@ public final class HauntModules {
         double horizontal = Math.sqrt(dx * dx + dz * dz);
         float wantedYaw = (float) (Math.toDegrees(Math.atan2(dz, dx)) - 90.0);
         float wantedPitch = (float) -Math.toDegrees(Math.atan2(dy, horizontal));
-        float yaw = client.player.getYaw() + MathHelper.wrapDegrees(wantedYaw - client.player.getYaw()) * 0.45f;
-        float pitch = client.player.getPitch() + (wantedPitch - client.player.getPitch()) * 0.18f;
+        float yaw = client.player.getYaw() + MathHelper.wrapDegrees(wantedYaw - client.player.getYaw()) * 0.32f;
+        float pitch = client.player.getPitch() + (wantedPitch - client.player.getPitch()) * 0.32f;
         client.player.setYaw(yaw);
         client.player.setPitch(MathHelper.clamp(pitch, -90.0f, 90.0f));
     }

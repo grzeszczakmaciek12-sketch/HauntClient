@@ -16,7 +16,6 @@ public final class HauntModules {
     public enum Module {
         FULLBRIGHT("Fullbright", "Maximum vanilla brightness", Category.RENDER),
         XRAY("X-Ray Radar", "Radar for ore blocks sent by the server", Category.RENDER),
-        SERVER_DEMO("Server Demo", "Enable permitted server-side test features", Category.HUD),
         COORDINATES("Coordinates", "Show XYZ and dimension", Category.HUD),
         FPS("FPS Counter", "Show current frame rate", Category.HUD),
         KEYSTROKES("Keystrokes", "Show movement key states", Category.HUD),
@@ -53,10 +52,6 @@ public final class HauntModules {
 
     public static void toggle(Module module) {
         MinecraftClient client = MinecraftClient.getInstance();
-        if ((module == Module.FLY || module == Module.XRAY) && !isEnabled(Module.SERVER_DEMO)) {
-            if (client.player != null) client.player.sendMessage(net.minecraft.text.Text.literal("§eNajpierw włącz Server Demo w zakładce HUD."), true);
-            return;
-        }
         if (module == Module.FLY && client.player != null && !client.player.getAbilities().allowFlying) {
             client.player.sendMessage(net.minecraft.text.Text.literal("§cSerwer nie przyznał uprawnienia do latania."), true);
             return;
@@ -89,12 +84,6 @@ public final class HauntModules {
     }
 
     public static void tick(MinecraftClient client) {
-        if (!isEnabled(Module.SERVER_DEMO)) {
-            if (isEnabled(Module.FLY)) ENABLED.remove(Module.FLY);
-            if (isEnabled(Module.XRAY)) ENABLED.remove(Module.XRAY);
-            ORE_RESULTS.clear();
-            return;
-        }
         if (isEnabled(Module.FLY) && client.player != null && !client.player.getAbilities().allowFlying) {
             ENABLED.remove(Module.FLY);
             client.player.sendMessage(net.minecraft.text.Text.literal("§cSerwer odebrał uprawnienie do latania."), true);
@@ -129,9 +118,6 @@ public final class HauntModules {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player == null || client.world == null || client.options.hudHidden) return;
         int x = 8, y = 8;
-        if (isEnabled(Module.SERVER_DEMO)) {
-            drawLine(context, "SERVER DEMO: ON", x, y); y += 12;
-        }
         if (isEnabled(Module.FPS)) {
             drawLine(context, "FPS: " + client.getCurrentFps(), x, y); y += 12;
         }

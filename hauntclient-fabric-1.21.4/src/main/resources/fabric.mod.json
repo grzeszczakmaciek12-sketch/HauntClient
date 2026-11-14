@@ -2,19 +2,11 @@
   "schemaVersion": 1,
   "id": "hauntclient",
   "version": "${version}",
-  "name": "Haunt Client",
-  "description": "Purple Halloween-themed client GUI and practice tools.",
+  "name": "HAUNT CLIENT V2",
+  "description": "A purple client-side HUD and utility mod for Fabric 1.21.4.",
   "authors": ["HauntClient"],
-  "contact": {},
   "license": "MIT",
   "environment": "client",
-  "entrypoints": {
-    "client": ["dev.hauntclient.HauntClient"]
-  },
-  "depends": {
-    "fabricloader": ">=0.16.0",
-    "minecraft": "~1.21.4",
-    "java": ">=21",
-    "fabric-api": "*"
-  }
+  "entrypoints": { "client": ["dev.hauntclient.HauntClient"] },
+  "depends": { "fabricloader": ">=0.16.0", "minecraft": "~1.21.4", "java": ">=21", "fabric-api": "*" }
 }

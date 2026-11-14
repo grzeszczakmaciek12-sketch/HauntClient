@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
+import java.util.HashSet;
 
 public final class HauntModules {
     public enum Module {
@@ -38,9 +39,16 @@ public final class HauntModules {
     private static boolean previousFlying;
     private static int scanCooldown;
     private static final List<String> ORE_RESULTS = new ArrayList<>();
+    private static final Set<String> XRAY_BLOCKS = new HashSet<>(List.of("coal_ore", "deepslate_coal_ore", "iron_ore", "deepslate_iron_ore", "gold_ore", "deepslate_gold_ore", "diamond_ore", "deepslate_diamond_ore", "emerald_ore", "deepslate_emerald_ore", "redstone_ore", "deepslate_redstone_ore", "lapis_ore", "deepslate_lapis_ore", "copper_ore", "deepslate_copper_ore", "ancient_debris"));
     private HauntModules() {}
 
     public static boolean isEnabled(Module module) { return ENABLED.contains(module); }
+    public static boolean isXrayBlockSelected(String blockId) { return XRAY_BLOCKS.contains(blockId); }
+    public static void toggleXrayBlock(String blockId) {
+        if (!XRAY_BLOCKS.remove(blockId)) XRAY_BLOCKS.add(blockId);
+        ORE_RESULTS.clear();
+    }
+    public static int getXrayBlockCount() { return XRAY_BLOCKS.size(); }
 
     public static void toggle(Module module) {
         MinecraftClient client = MinecraftClient.getInstance();
@@ -104,7 +112,7 @@ public final class HauntModules {
                 for (int dz = -8; dz <= 8 && ORE_RESULTS.size() < 6; dz++) {
                     BlockPos pos = origin.add(dx, dy, dz);
                     String id = net.minecraft.registry.Registries.BLOCK.getId(client.world.getBlockState(pos).getBlock()).getPath();
-                    if (id.endsWith("_ore") || id.equals("ancient_debris")) {
+                    if (XRAY_BLOCKS.contains(id)) {
                         ORE_RESULTS.add(id.replace('_', ' ') + " " + pos.getX() + " " + pos.getY() + " " + pos.getZ());
                     }
                 }

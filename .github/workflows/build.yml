@@ -21,37 +21,25 @@ jobs:
           distribution: temurin
           java-version: 21
 
-      - name: Show project files
-        run: |
-          echo "Current directory:"
-          pwd
-          echo "Repository files:"
-          ls -la
-          echo "Gradle files:"
-          find . -maxdepth 5 \( -name "build.gradle" -o -name "settings.gradle" \)
-
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: 8.10.2
 
-      - name: Build mod
+      - name: Check files
         run: |
-          if [ -f build.gradle ]; then
-            gradle build
-          elif [ -f HauntClient/build.gradle ]; then
-            cd HauntClient
-            gradle build
-          else
-            echo "ERROR: Nie znaleziono build.gradle!"
-            exit 1
-          fi
+          echo "Repository root:"
+          ls -la
+          echo "Project folder:"
+          ls -la hauntclient-fabric-1.21.4
+          test -f hauntclient-fabric-1.21.4/build.gradle
+
+      - name: Build mod
+        run: gradle -p hauntclient-fabric-1.21.4 build
 
       - name: Upload JAR
         uses: actions/upload-artifact@v4
         with:
           name: HauntClient
-          path: |
-            build/libs/*.jar
-            HauntClient/build/libs/*.jar
+          path: hauntclient-fabric-1.21.4/build/libs/*.jar
           if-no-files-found: error

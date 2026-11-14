@@ -16,7 +16,7 @@ public class HauntClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         openMenu=KeyBindingHelper.registerKeyBinding(new KeyBinding("key.hauntclient.open",
-            InputUtil.Type.KEYSYM,GLFW.GLFW_KEY_P,"category.hauntclient"));
+            InputUtil.Type.KEYSYM,GLFW.GLFW_KEY_X,"category.hauntclient"));
         HauntModules.registerHud();
         // Keep all vanilla title-screen buttons; add a shortcut to the Haunt panel.
         ScreenEvents.AFTER_INIT.register((client, screen, scaledWidth, scaledHeight) -> {

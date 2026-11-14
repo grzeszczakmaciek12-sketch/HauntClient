@@ -5,6 +5,8 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.MathHelper;
+import net.minecraft.entity.player.PlayerEntity;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -23,7 +25,8 @@ public final class HauntModules {
         TOGGLE_SPRINT("Toggle Sprint", "Sprint while moving forward", Category.MOVEMENT),
         FLY("Fly", "Flight only when the server grants flight permission", Category.MOVEMENT),
         AIM_TRAINER("Aim Trainer", "Practice reticle only; no automatic aiming", Category.COMBAT),
-        BLOCK_INSPECTOR("Block Inspector", "Show the block currently under your crosshair", Category.WORLD);
+        BLOCK_INSPECTOR("Block Inspector", "Show the block currently under your crosshair", Category.WORLD),
+        FOLLOW_PLAYER("Follow Assist", "Smoothly tracks the nearest player; hold W to follow", Category.PLAYER);
 
         public final String title, description;
         public final Category category;
@@ -38,6 +41,7 @@ public final class HauntModules {
     private static boolean previousAllowFlying;
     private static boolean previousFlying;
     private static int scanCooldown;
+    private static PlayerEntity followTarget;
     private static final List<String> ORE_RESULTS = new ArrayList<>();
     private static final Set<String> XRAY_BLOCKS = new HashSet<>(List.of("coal_ore", "deepslate_coal_ore", "iron_ore", "deepslate_iron_ore", "gold_ore", "deepslate_gold_ore", "diamond_ore", "deepslate_diamond_ore", "emerald_ore", "deepslate_emerald_ore", "redstone_ore", "deepslate_redstone_ore", "lapis_ore", "deepslate_lapis_ore", "copper_ore", "deepslate_copper_ore", "ancient_debris"));
     private HauntModules() {}
@@ -88,10 +92,45 @@ public final class HauntModules {
             ENABLED.remove(Module.FLY);
             client.player.sendMessage(net.minecraft.text.Text.literal("§cSerwer odebrał uprawnienie do latania."), true);
         }
+        if (isEnabled(Module.FOLLOW_PLAYER)) updateFollowAssist(client);
+        else followTarget = null;
         if (isEnabled(Module.XRAY) && client.player != null && client.world != null && scanCooldown-- <= 0) {
             scanCooldown = 20;
             scanNearbyOres(client);
         }
+    }
+
+    private static void updateFollowAssist(MinecraftClient client) {
+        if (client.player == null || client.world == null) {
+            followTarget = null;
+            return;
+        }
+        PlayerEntity nearest = null;
+        double bestDistance = 32.0 * 32.0;
+        for (PlayerEntity candidate : client.world.getPlayers()) {
+            if (candidate == client.player || candidate.isSpectator() || !candidate.isAlive()) continue;
+            double distance = client.player.squaredDistanceTo(candidate);
+            if (distance < bestDistance) {
+                bestDistance = distance;
+                nearest = candidate;
+            }
+        }
+        followTarget = nearest;
+        if (nearest == null) return;
+
+        // Follow Assist only turns the camera. The player chooses when to move (hold W).
+        var from = client.player.getEyePos();
+        var to = nearest.getEyePos();
+        double dx = to.x - from.x;
+        double dy = to.y - from.y;
+        double dz = to.z - from.z;
+        double horizontal = Math.sqrt(dx * dx + dz * dz);
+        float wantedYaw = (float) (Math.toDegrees(Math.atan2(dz, dx)) - 90.0);
+        float wantedPitch = (float) -Math.toDegrees(Math.atan2(dy, horizontal));
+        float yaw = client.player.getYaw() + MathHelper.wrapDegrees(wantedYaw - client.player.getYaw()) * 0.18f;
+        float pitch = client.player.getPitch() + (wantedPitch - client.player.getPitch()) * 0.18f;
+        client.player.setYaw(yaw);
+        client.player.setPitch(MathHelper.clamp(pitch, -90.0f, 90.0f));
     }
 
     private static void scanNearbyOres(MinecraftClient client) {
@@ -144,7 +183,7 @@ public final class HauntModules {
             String id = net.minecraft.registry.Registries.BLOCK.getId(state.getBlock()).toString();
             drawLine(context, "BLOCK: " + id, x, y); y += 12;
         }
-        if (isEnabled(Module.AIM_TRAINER)) {
+        if (isEnabled(Module.FOLLOW_PLAYER)) {\n            if (followTarget != null) {\n                drawLine(context, "FOLLOW: " + followTarget.getName().getString() + "  " + String.format(java.util.Locale.ROOT, "%.1fm", client.player.distanceTo(followTarget)), x, y);\n            } else {\n                drawLine(context, "FOLLOW: waiting for a nearby player", x, y);\n            }\n            y += 12;\n        }\n        if (isEnabled(Module.AIM_TRAINER)) {
             int cx = context.getScaledWindowWidth() / 2;
             int cy = context.getScaledWindowHeight() / 2;
             context.fill(cx - 10, cy, cx + 11, cy + 1, 0xFFE7D4FF);

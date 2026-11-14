@@ -183,7 +183,15 @@ public final class HauntModules {
             String id = net.minecraft.registry.Registries.BLOCK.getId(state.getBlock()).toString();
             drawLine(context, "BLOCK: " + id, x, y); y += 12;
         }
-        if (isEnabled(Module.FOLLOW_PLAYER)) {\n            if (followTarget != null) {\n                drawLine(context, "FOLLOW: " + followTarget.getName().getString() + "  " + String.format(java.util.Locale.ROOT, "%.1fm", client.player.distanceTo(followTarget)), x, y);\n            } else {\n                drawLine(context, "FOLLOW: waiting for a nearby player", x, y);\n            }\n            y += 12;\n        }\n        if (isEnabled(Module.AIM_TRAINER)) {
+        if (isEnabled(Module.FOLLOW_PLAYER)) {
+            if (followTarget != null) {
+                drawLine(context, "FOLLOW: " + followTarget.getName().getString() + "  " + String.format(java.util.Locale.ROOT, "%.1fm", client.player.distanceTo(followTarget)), x, y);
+            } else {
+                drawLine(context, "FOLLOW: waiting for a nearby player", x, y);
+            }
+            y += 12;
+        }
+        if (isEnabled(Module.AIM_TRAINER)) {
             int cx = context.getScaledWindowWidth() / 2;
             int cy = context.getScaledWindowHeight() / 2;
             context.fill(cx - 10, cy, cx + 11, cy + 1, 0xFFE7D4FF);

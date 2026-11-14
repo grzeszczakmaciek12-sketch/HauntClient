@@ -16,6 +16,7 @@ public class HauntClient implements ClientModInitializer {
         HauntModules.registerHud();
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             while(openMenu.wasPressed()) if(client.currentScreen==null) client.setScreen(new HauntScreen());
+            HauntModules.tick(client);
             if(HauntModules.isEnabled(HauntModules.Module.TOGGLE_SPRINT)&&client.player!=null
                 &&client.options.forwardKey.isPressed()&&!client.player.isSneaking()) client.player.setSprinting(true);
         });

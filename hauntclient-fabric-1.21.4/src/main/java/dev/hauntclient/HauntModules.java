@@ -153,7 +153,12 @@ public final class HauntModules {
             drawLine(context, "X-RAY RADAR • SERVER-SENT BLOCKS ONLY", x, y); y += 12;
             for (String ore : ORE_RESULTS) { drawLine(context, ore, x, y); y += 12; }
         }
-        if (isEnabled(Module.BLOCK_INSPECTOR) && client.crosshairTarget instanceof net.minecraft.util.hit.BlockHitResult hit) {\n            var state = client.world.getBlockState(hit.getBlockPos());\n            String id = net.minecraft.registry.Registries.BLOCK.getId(state.getBlock()).toString();\n            drawLine(context, "BLOCK: " + id, x, y); y += 12;\n        }\n        if (isEnabled(Module.AIM_TRAINER)) {
+        if (isEnabled(Module.BLOCK_INSPECTOR) && client.crosshairTarget instanceof net.minecraft.util.hit.BlockHitResult hit) {
+            var state = client.world.getBlockState(hit.getBlockPos());
+            String id = net.minecraft.registry.Registries.BLOCK.getId(state.getBlock()).toString();
+            drawLine(context, "BLOCK: " + id, x, y); y += 12;
+        }
+        if (isEnabled(Module.AIM_TRAINER)) {
             int cx = context.getScaledWindowWidth() / 2;
             int cy = context.getScaledWindowHeight() / 2;
             context.fill(cx - 10, cy, cx + 11, cy + 1, 0xFFE7D4FF);

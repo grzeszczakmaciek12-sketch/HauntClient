@@ -28,13 +28,14 @@ public class HauntScreen extends Screen {
             tx+=98;
         }
         ctx.fill(x+14,y+91,x+w-14,y+116,0xFF100B17);
-        ctx.drawText(textRenderer,"Modules in "+selected.name()+"  •  click to toggle",x+23,y+100,MUTED,false);
+        ctx.drawText(textRenderer,"LMB: toggle module  •  RMB on X-Ray: choose blocks",x+23,y+100,MUTED,false);
         List<HauntModules.Module> modules=visibleModules();
         for(int i=0;i<modules.size();i++){
             HauntModules.Module m=modules.get(i); int top=y+126+i*37;
             ctx.fill(x+14,top,x+w-14,top+31,CARD);
             ctx.drawText(textRenderer,m.title,x+24,top+5,0xFFFFFFFF,false);
             ctx.drawText(textRenderer,m.description,x+24,top+17,MUTED,false);
+            if(m==HauntModules.Module.XRAY) ctx.drawText(textRenderer,"BLOCKS: "+HauntModules.getXrayBlockCount()+"  •  RMB: CONFIGURE",x+250,top+17,0xFFD7B6FF,false);
             int bx=x+w-62; boolean on=HauntModules.isEnabled(m);
             ctx.fill(bx,top+7,bx+36,top+24,on?0xFF8E4DCE:0xFF51465A);
             ctx.fill(on?bx+21:bx+3,top+9,on?bx+33:bx+15,top+22,0xFFFFFFFF);

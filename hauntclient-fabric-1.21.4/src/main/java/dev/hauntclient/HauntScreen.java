@@ -10,10 +10,15 @@ import java.util.List;
 import java.util.Locale;
 
 public class HauntScreen extends Screen {
-    private static final int PURPLE = 0xFF9B5CFF;
-    private static final int PANEL = 0xF0181022;
-    private static final int CARD = 0xFF291B38;
-    private static final int MUTED = 0xFFB9A8C9;
+    private static final int ORANGE = 0xFFFF8A24;
+    private static final int GOLD = 0xFFFFC15A;
+    private static final int PANEL = 0xF0111020;
+    private static final int CARD = 0xFF211B31;
+    private static final int CARD_HOVER = 0xFF30233F;
+    private static final int MUTED = 0xFFB7A9C8;
+    private static final int WHITE = 0xFFFFF4E5;
+    private static final int PURPLE = 0xFF9A69C8;
+
     private HauntModules.Category selected = HauntModules.Category.HUD;
     private String search = "";
 
@@ -21,9 +26,9 @@ public class HauntScreen extends Screen {
 
     private List<HauntModules.Module> visibleModules() {
         List<HauntModules.Module> list = new ArrayList<>();
+        String query = search.toLowerCase(Locale.ROOT);
         for (HauntModules.Module module : HauntModules.Module.values()) {
             if (module.category != selected) continue;
-            String query = search.toLowerCase(Locale.ROOT);
             if (!query.isEmpty()
                 && !module.title.toLowerCase(Locale.ROOT).contains(query)
                 && !module.description.toLowerCase(Locale.ROOT).contains(query)) continue;
@@ -32,91 +37,139 @@ public class HauntScreen extends Screen {
         return list;
     }
 
+    private void drawPumpkin(DrawContext ctx, int x, int y, int scale) {
+        int s = scale;
+        // Pixel-art pumpkin: warm body, ribs, stem and a tiny carved face.
+        ctx.fill(x + 2*s, y, x + 5*s, y + s, 0xFF688D3B);
+        ctx.fill(x + s, y + s, x + 6*s, y + 2*s, GOLD);
+        ctx.fill(x, y + 2*s, x + 7*s, y + 5*s, ORANGE);
+        ctx.fill(x + s, y + 5*s, x + 6*s, y + 6*s, 0xFFE66C1E);
+        ctx.fill(x + 2*s, y + 2*s, x + 3*s, y + 5*s, 0xFFFFB044);
+        ctx.fill(x + 4*s, y + 2*s, x + 5*s, y + 5*s, 0xFFFFB044);
+        ctx.fill(x + 2*s, y + 3*s, x + 3*s, y + 4*s, 0xFF382039);
+        ctx.fill(x + 4*s, y + 3*s, x + 5*s, y + 4*s, 0xFF382039);
+        ctx.fill(x + 3*s, y + 4*s, x + 4*s, y + 5*s, 0xFF382039);
+    }
+
+    private void drawStar(DrawContext ctx, int x, int y, int color) {
+        ctx.fill(x, y, x + 2, y + 2, color);
+        ctx.fill(x - 2, y + 1, x + 4, y + 2, color);
+    }
+
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
         renderBackground(ctx, mouseX, mouseY, delta);
-        int w = 640, h = 370, x = (width - w) / 2, y = (height - h) / 2;
-        ctx.fill(x - 2, y - 2, x + w + 2, y + h + 2, PURPLE);
+        int w = Math.min(700, width - 24), h = Math.min(410, height - 24);
+        int x = (width - w) / 2, y = (height - h) / 2;
+        int side = 158;
+        ctx.fill(x - 2, y - 2, x + w + 2, y + h + 2, 0xFF6C3A78);
         ctx.fill(x, y, x + w, y + h, PANEL);
-        ctx.fill(x, y, x + w, y + 48, 0xFF21132E);
-        ctx.drawText(textRenderer, "HAUNT CLIENT V3", x + 18, y + 9, 0xFFFFFFFF, true);
-        ctx.drawText(textRenderer, "FABRIC 1.21.4  •  MODULAR CLIENT", x + 18, y + 27, MUTED, false);
+        ctx.fill(x, y, x + w, y + 66, 0xFF1D142B);
+        ctx.fill(x, y + 64, x + w, y + 67, 0xFFB65D37);
+        ctx.fill(x, y + 67, x + side, y + h, 0xFF171323);
+        drawPumpkin(ctx, x + 18, y + 14, 5);
+        ctx.drawText(textRenderer, "HAUNT CLIENT", x + 76, y + 15, WHITE, true);
+        ctx.drawText(textRenderer, "V3  /  HALLOWEEN EDITION", x + 77, y + 32, GOLD, false);
+        ctx.drawText(textRenderer, "THE NIGHT IS YOURS", x + 77, y + 47, MUTED, false);
+        drawStar(ctx, x + w - 105, y + 19, GOLD);
+        drawStar(ctx, x + w - 83, y + 39, PURPLE);
+        drawPumpkin(ctx, x + w - 60, y + 13, 5);
 
-        int tx = x + 14;
+        ctx.drawText(textRenderer, "NIGHT MENU", x + 17, y + 83, GOLD, true);
+        int catY = y + 103;
         for (HauntModules.Category category : HauntModules.Category.values()) {
-            int tabW = 98;
-            ctx.fill(tx, y + 57, tx + tabW - 5, y + 82,
-                category == selected ? 0xFF7040A0 : CARD);
-            ctx.drawCenteredTextWithShadow(textRenderer, category.name(),
-                tx + (tabW - 5) / 2, y + 65,
-                category == selected ? 0xFFFFFFFF : MUTED);
-            tx += tabW;
+            boolean active = category == selected;
+            int top = catY;
+            boolean hover = mouseX >= x + 10 && mouseX <= x + side - 10
+                && mouseY >= top && mouseY <= top + 31;
+            ctx.fill(x + 10, top, x + side - 10, top + 31,
+                active ? 0xFF57334F : (hover ? CARD_HOVER : 0xFF211B30));
+            if (active) ctx.fill(x + 10, top + 5, x + 13, top + 26, ORANGE);
+            ctx.drawText(textRenderer, category.name(), x + 22, top + 10,
+                active ? WHITE : MUTED, active);
+            catY += 37;
         }
 
-        ctx.fill(x + 14, y + 91, x + w - 14, y + 116, 0xFF100B17);
-        String searchLabel = search.isEmpty() ? "SEARCH MODULES..." : "SEARCH: " + search + "_";
-        ctx.drawText(textRenderer, searchLabel, x + 24, y + 100, search.isEmpty() ? MUTED : 0xFFFFFFFF, false);
-        ctx.drawText(textRenderer, "TYPE TO SEARCH  •  BACKSPACE TO EDIT", x + w - 240, y + 100, MUTED, false);
+        int mainX = x + side + 18;
+        int mainW = w - side - 36;
+        ctx.drawText(textRenderer, selected.name() + " MODULES", mainX, y + 83, WHITE, true);
+        ctx.drawText(textRenderer, "Choose what follows you through the fog.", mainX, y + 98, MUTED, false);
+        ctx.fill(mainX, y + 119, mainX + mainW, y + 146, 0xFF100D19);
+        ctx.fill(mainX, y + 119, mainX + 2, y + 146, ORANGE);
+        ctx.drawText(textRenderer, search.isEmpty() ? "⌕  SEARCH THE DARK..." : "⌕  " + search + "_",
+            mainX + 11, y + 128, search.isEmpty() ? MUTED : WHITE, false);
+        ctx.drawText(textRenderer, "TYPE TO FILTER", mainX + mainW - 100, y + 128, 0xFF766985, false);
 
         List<HauntModules.Module> modules = visibleModules();
-        if (modules.isEmpty()) {
-            ctx.drawCenteredTextWithShadow(textRenderer, "NO MODULES FOUND",
-                x + w / 2, y + 160, MUTED);
-        }
+        int cardW = (mainW - 10) / 2;
         for (int i = 0; i < modules.size(); i++) {
             HauntModules.Module module = modules.get(i);
-            int top = y + 126 + i * 39;
-            ctx.fill(x + 14, top, x + w - 14, top + 33, CARD);
-            ctx.drawText(textRenderer, module.title, x + 25, top + 5, 0xFFFFFFFF, false);
-            ctx.drawText(textRenderer, module.description, x + 25, top + 18, MUTED, false);
-            if (module == HauntModules.Module.XRAY) {
-                ctx.drawText(textRenderer, "BLOCKS: " + HauntModules.getXrayBlockCount()
-                    + "  •  RMB: CONFIGURE", x + w - 260, top + 18, 0xFFD7B6FF, false);
-            }
-            int bx = x + w - 62;
+            int col = i % 2, row = i / 2;
+            int left = mainX + col * (cardW + 10);
+            int top = y + 157 + row * 67;
+            int right = left + cardW;
+            boolean hover = mouseX >= left && mouseX <= right && mouseY >= top && mouseY <= top + 58;
             boolean enabled = HauntModules.isEnabled(module);
-            ctx.fill(bx, top + 8, bx + 36, top + 25, enabled ? 0xFF8E4DCE : 0xFF51465A);
-            ctx.fill(enabled ? bx + 21 : bx + 3, top + 10,
-                enabled ? bx + 33 : bx + 15, top + 23, 0xFFFFFFFF);
+            ctx.fill(left, top, right, top + 58, hover ? CARD_HOVER : CARD);
+            ctx.fill(left, top, left + 3, top + 58, enabled ? ORANGE : 0xFF55465F);
+            ctx.drawText(textRenderer, module.title, left + 12, top + 9, WHITE, true);
+            String desc = module.description;
+            int maxDesc = cardW - 75;
+            while (textRenderer.getWidth(desc) > maxDesc && desc.length() > 4)
+                desc = desc.substring(0, desc.length() - 4) + "...";
+            ctx.drawText(textRenderer, desc, left + 12, top + 27, MUTED, false);
+            int bx = right - 48;
+            ctx.fill(bx, top + 19, bx + 34, top + 37, enabled ? 0xFFB65D37 : 0xFF51465A);
+            ctx.fill(enabled ? bx + 19 : bx + 3, top + 21,
+                enabled ? bx + 31 : bx + 15, top + 35, WHITE);
+            if (module == HauntModules.Module.XRAY)
+                ctx.drawText(textRenderer, "RMB: BLOCKS " + HauntModules.getXrayBlockCount(),
+                    left + 12, top + 44, GOLD, false);
         }
-        ctx.drawText(textRenderer,
-            "LMB: TOGGLE  •  RMB ON X-RAY: BLOCK LIST  •  P / ESC: CLOSE",
-            x + 16, y + h - 25, MUTED, false);
-        ctx.drawText(textRenderer,
-            "Aim Trainer is visual practice only. X-Ray reads client-received blocks.",
-            x + 16, y + h - 13, 0xFF8E7BA0, false);
+
+        if (modules.isEmpty())
+            ctx.drawCenteredTextWithShadow(textRenderer, "NO SPIRITS FOUND",
+                mainX + mainW / 2, y + 190, MUTED);
+
+        ctx.fill(x + 1, y + h - 29, x + w - 1, y + h - 1, 0xFF171323);
+        drawPumpkin(ctx, x + 14, y + h - 23, 2);
+        ctx.drawText(textRenderer, "LMB: TOGGLE   •   RMB X-RAY: CONFIG   •   P / ESC: CLOSE",
+            x + 37, y + h - 19, MUTED, false);
+        ctx.drawText(textRenderer, "A LITTLE MAGIC. A LOT OF ATMOSPHERE.",
+            x + w - 204, y + h - 19, 0xFFB77A58, false);
         super.render(ctx, mouseX, mouseY, delta);
     }
 
     @Override
     public boolean mouseClicked(double mx, double my, int button) {
-        int w = 640, h = 370, x = (width - w) / 2, y = (height - h) / 2;
-        if (button == 1) {
-            List<HauntModules.Module> modules = visibleModules();
-            for (int i = 0; i < modules.size(); i++) {
-                int top = y + 126 + i * 39;
-                if (modules.get(i) == HauntModules.Module.XRAY
-                    && mx >= x + 14 && mx <= x + w - 14
-                    && my >= top && my <= top + 33) {
-                    client.setScreen(new XrayBlockScreen(this));
-                    return true;
-                }
-            }
-        }
+        int w = Math.min(700, width - 24), h = Math.min(410, height - 24);
+        int x = (width - w) / 2, y = (height - h) / 2;
+        int side = 158;
         if (button == 0) {
-            int tx = x + 14;
+            int catY = y + 103;
             for (HauntModules.Category category : HauntModules.Category.values()) {
-                if (mx >= tx && mx <= tx + 93 && my >= y + 57 && my <= y + 82) {
+                if (mx >= x + 10 && mx <= x + side - 10
+                    && my >= catY && my <= catY + 31) {
                     selected = category;
                     return true;
                 }
-                tx += 98;
+                catY += 37;
             }
-            List<HauntModules.Module> modules = visibleModules();
-            for (int i = 0; i < modules.size(); i++) {
-                int top = y + 126 + i * 39;
-                if (mx >= x + 14 && mx <= x + w - 14
-                    && my >= top && my <= top + 33) {
+        }
+        int mainX = x + side + 18;
+        int mainW = w - side - 36;
+        List<HauntModules.Module> modules = visibleModules();
+        int cardW = (mainW - 10) / 2;
+        for (int i = 0; i < modules.size(); i++) {
+            int col = i % 2, row = i / 2;
+            int left = mainX + col * (cardW + 10);
+            int top = y + 157 + row * 67;
+            if (mx >= left && mx <= left + cardW && my >= top && my <= top + 58) {
+                if (button == 1 && modules.get(i) == HauntModules.Module.XRAY) {
+                    client.setScreen(new XrayBlockScreen(this));
+                    return true;
+                }
+                if (button == 0) {
                     HauntModules.toggle(modules.get(i));
                     return true;
                 }

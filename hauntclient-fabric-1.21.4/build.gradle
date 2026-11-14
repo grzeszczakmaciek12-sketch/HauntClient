@@ -26,6 +26,11 @@ jobs:
         with:
           gradle-version: 8.10.2
 
+      - name: Check project files
+        run: |
+          ls -la
+          ls -la hauntclient-fabric-1.21.4
+
       - name: Build mod
         working-directory: hauntclient-fabric-1.21.4
         run: gradle build

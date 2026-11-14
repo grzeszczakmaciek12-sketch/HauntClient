@@ -9,22 +9,15 @@ import org.lwjgl.glfw.GLFW;
 
 public class HauntClient implements ClientModInitializer {
     private static KeyBinding openMenu;
-
     @Override
     public void onInitializeClient() {
-        openMenu = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-            "key.hauntclient.open",
-            InputUtil.Type.KEYSYM,
-            GLFW.GLFW_KEY_P,
-            "category.hauntclient"
-        ));
-
+        openMenu=KeyBindingHelper.registerKeyBinding(new KeyBinding("key.hauntclient.open",
+            InputUtil.Type.KEYSYM,GLFW.GLFW_KEY_P,"category.hauntclient"));
+        HauntModules.registerHud();
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
-            while (openMenu.wasPressed()) {
-                if (client.currentScreen == null) {
-                    client.setScreen(new HauntScreen());
-                }
-            }
+            while(openMenu.wasPressed()) if(client.currentScreen==null) client.setScreen(new HauntScreen());
+            if(HauntModules.isEnabled(HauntModules.Module.TOGGLE_SPRINT)&&client.player!=null
+                &&client.options.forwardKey.isPressed()&&!client.player.isSneaking()) client.player.setSprinting(true);
         });
     }
 }

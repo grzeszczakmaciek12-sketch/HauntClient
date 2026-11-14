@@ -4,18 +4,24 @@ import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.item.ItemStack;
+import net.minecraft.util.math.BlockPos;
 
+import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Set;
 
 public final class HauntModules {
     public enum Module {
         FULLBRIGHT("Fullbright", "Maximum vanilla brightness", Category.RENDER),
+        XRAY("X-Ray Radar", "Nearby ores (singleplayer demo)", Category.RENDER),
         COORDINATES("Coordinates", "Show XYZ and dimension", Category.HUD),
         FPS("FPS Counter", "Show current frame rate", Category.HUD),
         KEYSTROKES("Keystrokes", "Show movement key states", Category.HUD),
         ARMOR_HUD("Armor HUD", "Show equipped armor", Category.PLAYER),
-        TOGGLE_SPRINT("Toggle Sprint", "Sprint while moving forward", Category.MOVEMENT);
+        TOGGLE_SPRINT("Toggle Sprint", "Sprint while moving forward", Category.MOVEMENT),
+        FLY("Fly", "Creative-style flight in singleplayer only", Category.MOVEMENT),
+        AIM_TRAINER("Training Reticle", "Practice overlay; no auto-aim or attacks", Category.PLAYER);
 
         public final String title, description;
         public final Category category;
@@ -27,23 +33,80 @@ public final class HauntModules {
     private static final Set<Module> ENABLED = EnumSet.noneOf(Module.class);
     private static double previousGamma = 1.0;
     private static boolean gammaCaptured;
+    private static boolean previousAllowFlying;
+    private static boolean previousFlying;
+    private static int scanCooldown;
+    private static final List<String> ORE_RESULTS = new ArrayList<>();
     private HauntModules() {}
 
     public static boolean isEnabled(Module module) { return ENABLED.contains(module); }
 
     public static void toggle(Module module) {
         MinecraftClient client = MinecraftClient.getInstance();
+        if (module == Module.FLY && !client.isInSingleplayer()) {
+            if (client.player != null) client.player.sendMessage(net.minecraft.text.Text.literal("§cFly demo działa tylko w singleplayerze."), true);
+            return;
+        }
+        if (module == Module.XRAY && !client.isInSingleplayer()) {
+            if (client.player != null) client.player.sendMessage(net.minecraft.text.Text.literal("§cX-Ray Radar demo działa tylko w singleplayerze."), true);
+            return;
+        }
         if (ENABLED.remove(module)) {
             if (module == Module.FULLBRIGHT && client.options != null && gammaCaptured) {
                 client.options.getGamma().setValue(previousGamma);
                 gammaCaptured = false;
             }
+            if (module == Module.FLY && client.player != null) {
+                var abilities = client.player.getAbilities();
+                abilities.allowFlying = previousAllowFlying;
+                abilities.flying = previousFlying && previousAllowFlying;
+                ORE_RESULTS.clear();
+            }
+            if (module == Module.XRAY) ORE_RESULTS.clear();
         } else {
             ENABLED.add(module);
             if (module == Module.FULLBRIGHT && client.options != null) {
                 previousGamma = client.options.getGamma().getValue();
                 gammaCaptured = true;
                 client.options.getGamma().setValue(1.0);
+            }
+            if (module == Module.FLY && client.player != null) {
+                var abilities = client.player.getAbilities();
+                previousAllowFlying = abilities.allowFlying;
+                previousFlying = abilities.flying;
+                abilities.allowFlying = true;
+                abilities.flying = true;
+            }
+        }
+    }
+
+    public static void tick(MinecraftClient client) {
+        if (isEnabled(Module.FLY) && client.player != null && !client.isInSingleplayer()) {
+            ENABLED.remove(Module.FLY);
+        }
+        if (isEnabled(Module.XRAY) && client.player != null && client.world != null) {
+            if (!client.isInSingleplayer()) {
+                ENABLED.remove(Module.XRAY);
+                ORE_RESULTS.clear();
+            } else if (scanCooldown-- <= 0) {
+                scanCooldown = 20;
+                scanNearbyOres(client);
+            }
+        }
+    }
+
+    private static void scanNearbyOres(MinecraftClient client) {
+        ORE_RESULTS.clear();
+        BlockPos origin = client.player.getBlockPos();
+        for (int dx = -8; dx <= 8 && ORE_RESULTS.size() < 6; dx++) {
+            for (int dy = -5; dy <= 5 && ORE_RESULTS.size() < 6; dy++) {
+                for (int dz = -8; dz <= 8 && ORE_RESULTS.size() < 6; dz++) {
+                    BlockPos pos = origin.add(dx, dy, dz);
+                    String id = net.minecraft.registry.Registries.BLOCK.getId(client.world.getBlockState(pos).getBlock()).getPath();
+                    if (id.endsWith("_ore") || id.equals("ancient_debris")) {
+                        ORE_RESULTS.add(id.replace('_', ' ') + " " + pos.getX() + " " + pos.getY() + " " + pos.getZ());
+                    }
+                }
             }
         }
     }
@@ -71,7 +134,18 @@ public final class HauntModules {
                 + (client.options.backKey.isPressed() ? "[S]" : " S ")
                 + (client.options.rightKey.isPressed() ? "[D]" : " D ")
                 + (client.options.jumpKey.isPressed() ? " [SPACE]" : "  SPACE ");
-            drawLine(context, keys, x, y);
+            drawLine(context, keys, x, y); y += 12;
+        }
+        if (isEnabled(Module.XRAY)) {
+            drawLine(context, "X-RAY RADAR • SINGLEPLAYER DEMO", x, y); y += 12;
+            for (String ore : ORE_RESULTS) { drawLine(context, ore, x, y); y += 12; }
+        }
+        if (isEnabled(Module.AIM_TRAINER)) {
+            int cx = context.getScaledWindowWidth() / 2;
+            int cy = context.getScaledWindowHeight() / 2;
+            context.fill(cx - 10, cy, cx + 11, cy + 1, 0xFFE7D4FF);
+            context.fill(cx, cy - 10, cx + 1, cy + 11, 0xFFE7D4FF);
+            context.drawText(client.textRenderer, "TRAINING", cx + 14, cy - 4, 0xFFE7D4FF, true);
         }
         if (isEnabled(Module.ARMOR_HUD)) {
             int ax = 8, ay = context.getScaledWindowHeight() - 22;

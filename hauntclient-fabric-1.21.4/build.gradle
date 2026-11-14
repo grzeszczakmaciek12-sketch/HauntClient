@@ -1,28 +1,38 @@
-plugins {
-    id 'fabric-loom' version '1.9-SNAPSHOT'
-    id 'maven-publish'
-}
 
-version = project.mod_version
-group = project.maven_group
+name: Build HauntClient
 
-base { archivesName = project.archives_base_name }
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
 
-repositories { mavenCentral() }
+jobs:
+  build:
+    runs-on: ubuntu-latest
 
-dependencies {
-    minecraft "com.mojang:minecraft:${project.minecraft_version}"
-    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
-    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
-    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
-}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-processResources {
-    inputs.property "version", project.version
-    filesMatching("fabric.mod.json") { expand "version": project.version }
-}
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
 
-java {
-    toolchain { languageVersion = JavaLanguageVersion.of(21) }
-    withSourcesJar()
-}
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.10.2
+
+      - name: Build mod
+        working-directory: hauntclient-fabric-1.21.4
+        run: gradle build
+
+      - name: Upload JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: HauntClient
+          path: hauntclient-fabric-1.21.4/build/libs/*.jar
+          if-no-files-found: error

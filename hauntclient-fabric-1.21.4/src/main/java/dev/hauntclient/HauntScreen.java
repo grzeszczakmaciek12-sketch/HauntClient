@@ -20,7 +20,7 @@ public class HauntScreen extends Screen {
         ctx.fill(x,y,x+w,y+h,PANEL);
         ctx.fill(x,y,x+w,y+48,0xFF21132E);
         ctx.drawText(textRenderer,"HAUNT CLIENT V2",x+16,y+10,0xFFFFFFFF,true);
-        ctx.drawText(textRenderer,"THUNDER-INSPIRED  •  FABRIC 1.21.4",x+16,y+27,MUTED,false);
+        ctx.drawText(textRenderer,"DEMO MODE  •  FABRIC 1.21.4",x+16,y+27,MUTED,false);
         int tx=x+14;
         for (HauntModules.Category c:HauntModules.Category.values()) {
             ctx.fill(tx,y+58,tx+93,y+82,c==selected?0xFF7040A0:CARD);
@@ -39,7 +39,7 @@ public class HauntScreen extends Screen {
             ctx.fill(bx,top+7,bx+36,top+24,on?0xFF8E4DCE:0xFF51465A);
             ctx.fill(on?bx+21:bx+3,top+9,on?bx+33:bx+15,top+22,0xFFFFFFFF);
         }
-        ctx.drawText(textRenderer,"P - menu     ESC - close     Settings reset when game closes",x+15,y+h-17,MUTED,false);
+        ctx.drawText(textRenderer,"DEMO MODE  •  Fly / X-Ray Radar: singleplayer only",x+15,y+h-17,MUTED,false);
         super.render(ctx,mouseX,mouseY,delta);
     }
 

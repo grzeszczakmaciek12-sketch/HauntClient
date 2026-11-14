@@ -8,7 +8,11 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.decoration.ArmorStandEntity;
-import net.minecraft.util.Hand;\nimport net.minecraft.client.option.ParticlesMode;\nimport org.lwjgl.glfw.GLFW;\nimport java.util.ArrayDeque;\nimport java.util.Deque;
+import net.minecraft.util.Hand;
+import net.minecraft.client.option.ParticlesMode;
+import org.lwjgl.glfw.GLFW;
+import java.util.ArrayDeque;
+import java.util.Deque;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -18,7 +22,10 @@ import java.util.HashSet;
 
 public final class HauntModules {
     public enum Module {
-        FULLBRIGHT("Fullbright", "Maximum vanilla brightness", Category.RENDER),\n        FPS_BOOST("FPS Boost", "Reduce particles and entity shadows", Category.RENDER),\n        CUSTOM_CROSSHAIR("Custom Crosshair", "Draw a clean purple custom reticle", Category.HUD),\n        CPS_COUNTER("CPS Counter", "Show recent mouse clicks per second", Category.HUD),
+        FULLBRIGHT("Fullbright", "Maximum vanilla brightness", Category.RENDER),
+        FPS_BOOST("FPS Boost", "Reduce particles and entity shadows", Category.RENDER),
+        CUSTOM_CROSSHAIR("Custom Crosshair", "Draw a clean purple custom reticle", Category.HUD),
+        CPS_COUNTER("CPS Counter", "Show recent mouse clicks per second", Category.HUD),
         XRAY("X-Ray Radar", "Radar for ore blocks sent by the server", Category.RENDER),
         COORDINATES("Coordinates", "Show XYZ and dimension", Category.HUD),
         FPS("FPS Counter", "Show current frame rate", Category.HUD),
@@ -40,7 +47,13 @@ public final class HauntModules {
     public enum Category { COMBAT, MOVEMENT, RENDER, PLAYER, WORLD, HUD }
     private static final Set<Module> ENABLED = EnumSet.noneOf(Module.class);
     private static double previousGamma = 1.0;
-    private static boolean gammaCaptured;\n    private static ParticlesMode previousParticles;\n    private static boolean previousEntityShadows;\n    private static boolean fpsSettingsCaptured;\n    private static boolean previousLeftDown;\n    private static boolean previousRightDown;\n    private static final Deque<Long> CLICK_TIMES = new ArrayDeque<>();
+    private static boolean gammaCaptured;
+    private static ParticlesMode previousParticles;
+    private static boolean previousEntityShadows;
+    private static boolean fpsSettingsCaptured;
+    private static boolean previousLeftDown;
+    private static boolean previousRightDown;
+    private static final Deque<Long> CLICK_TIMES = new ArrayDeque<>();
     private static boolean previousAllowFlying;
     private static boolean previousFlying;
     private static int scanIndex;
@@ -266,7 +279,10 @@ public final class HauntModules {
             String id = net.minecraft.registry.Registries.BLOCK.getId(state.getBlock()).toString();
             drawLine(context, "BLOCK: " + id, x, y); y += 12;
         }
-        if (isEnabled(Module.TRAINING_AURA)) {\n            drawLine(context, "TRAINING AURA: ARMOR STANDS ONLY", x, y); y += 12;\n        }\n        if (isEnabled(Module.FOLLOW_PLAYER)) {
+        if (isEnabled(Module.TRAINING_AURA)) {
+            drawLine(context, "TRAINING AURA: ARMOR STANDS ONLY", x, y); y += 12;
+        }
+        if (isEnabled(Module.FOLLOW_PLAYER)) {
             if (followTarget != null) {
                 drawLine(context, "FOLLOW: " + followTarget.getName().getString() + "  " + String.format(java.util.Locale.ROOT, "%.1fm", client.player.distanceTo(followTarget)), x, y);
             } else {

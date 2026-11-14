@@ -43,6 +43,7 @@ public final class HauntModules {
     private static int scanIndex;
     private static BlockPos scanOrigin;
     private static PlayerEntity followTarget;
+    private static long lastFollowRenderNanos;
     private static final List<String> ORE_RESULTS = new ArrayList<>();
     private static final Set<String> XRAY_BLOCKS = new HashSet<>(List.of("coal_ore", "deepslate_coal_ore", "iron_ore", "deepslate_iron_ore", "gold_ore", "deepslate_gold_ore", "diamond_ore", "deepslate_diamond_ore", "emerald_ore", "deepslate_emerald_ore", "redstone_ore", "deepslate_redstone_ore", "lapis_ore", "deepslate_lapis_ore", "copper_ore", "deepslate_copper_ore", "ancient_debris"));
     private HauntModules() {}
@@ -127,7 +128,7 @@ public final class HauntModules {
      * step once per game tick. This keeps the on-screen tracking smooth at
      * different frame rates while leaving player movement and attacks untouched.
      */
-    public static void renderFollowAssist(float tickDelta) {
+    public static void renderFollowAssist() {
         MinecraftClient client = MinecraftClient.getInstance();
         if (!isEnabled(Module.FOLLOW_PLAYER) || client.player == null
             || client.world == null || followTarget == null || !followTarget.isAlive()) return;
@@ -142,7 +143,11 @@ public final class HauntModules {
         float wantedPitch = (float) -Math.toDegrees(Math.atan2(dy, horizontal));
 
         // Exponential interpolation makes the smoothing independent of FPS.
-        float frameFactor = 1.0f - (float) Math.exp(-12.0f * Math.max(0.0f, tickDelta));
+        long now = System.nanoTime();
+        float frameSeconds = lastFollowRenderNanos == 0L ? 1.0f / 60.0f
+            : Math.min(0.05f, Math.max(0.0f, (now - lastFollowRenderNanos) / 1_000_000_000.0f));
+        lastFollowRenderNanos = now;
+        float frameFactor = 1.0f - (float) Math.exp(-18.0f * frameSeconds);
         float yaw = client.player.getYaw()
             + MathHelper.wrapDegrees(wantedYaw - client.player.getYaw()) * frameFactor;
         float pitch = client.player.getPitch()
@@ -194,6 +199,7 @@ public final class HauntModules {
 
     private static void renderHud(DrawContext context) {
         MinecraftClient client = MinecraftClient.getInstance();
+        renderFollowAssist();
         if (client.player == null || client.world == null || client.options.hudHidden) return;
         int x = 8, y = 8;
         if (isEnabled(Module.FPS)) {

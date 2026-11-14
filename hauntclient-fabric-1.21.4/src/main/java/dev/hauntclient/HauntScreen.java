@@ -39,7 +39,7 @@ public class HauntScreen extends Screen {
             ctx.fill(bx,top+7,bx+36,top+24,on?0xFF8E4DCE:0xFF51465A);
             ctx.fill(on?bx+21:bx+3,top+9,on?bx+33:bx+15,top+22,0xFFFFFFFF);
         }
-        ctx.drawText(textRenderer,"DEMO MODE  •  Fly / X-Ray Radar: singleplayer only",x+15,y+h-17,MUTED,false);
+        ctx.drawText(textRenderer,"SERVER DEMO: Fly requires server permission; radar sees sent blocks only",x+15,y+h-17,MUTED,false);
         super.render(ctx,mouseX,mouseY,delta);
     }
 

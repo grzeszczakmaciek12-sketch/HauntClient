@@ -21,6 +21,7 @@ public class HauntScreen extends Screen {
 
     private HauntModules.Category selected = HauntModules.Category.HUD;
     private String search = "";
+    private double scrollOffset = 0;
 
     public HauntScreen() { super(Text.literal("HAUNT CLIENT V3")); }
 
@@ -102,11 +103,19 @@ public class HauntScreen extends Screen {
 
         List<HauntModules.Module> modules = visibleModules();
         int cardW = (mainW - 10) / 2;
+        int listTop = y + 157;
+        int listBottom = y + h - 35;
+        int listHeight = Math.max(0, listBottom - listTop);
+        int rows = (modules.size() + 1) / 2;
+        int contentHeight = Math.max(0, rows * 67 - 9);
+        double maxScroll = Math.max(0, contentHeight - listHeight);
+        scrollOffset = Math.max(0, Math.min(scrollOffset, maxScroll));
+        ctx.enableScissor(mainX, listTop, mainX + mainW, listBottom);
         for (int i = 0; i < modules.size(); i++) {
             HauntModules.Module module = modules.get(i);
             int col = i % 2, row = i / 2;
             int left = mainX + col * (cardW + 10);
-            int top = y + 157 + row * 67;
+            int top = (int)(y + 157 + row * 67 - scrollOffset);
             int right = left + cardW;
             boolean hover = mouseX >= left && mouseX <= right && mouseY >= top && mouseY <= top + 58;
             boolean enabled = HauntModules.isEnabled(module);
@@ -130,6 +139,7 @@ public class HauntScreen extends Screen {
         if (modules.isEmpty())
             ctx.drawCenteredTextWithShadow(textRenderer, "NO SPIRITS FOUND",
                 mainX + mainW / 2, y + 190, MUTED);
+        ctx.disableScissor();
 
         ctx.fill(x + 1, y + h - 29, x + w - 1, y + h - 1, 0xFF171323);
         drawPumpkin(ctx, x + 14, y + h - 23, 2);
@@ -151,6 +161,7 @@ public class HauntScreen extends Screen {
                 if (mx >= x + 10 && mx <= x + side - 10
                     && my >= catY && my <= catY + 31) {
                     selected = category;
+                    scrollOffset = 0;
                     return true;
                 }
                 catY += 37;
@@ -160,11 +171,19 @@ public class HauntScreen extends Screen {
         int mainW = w - side - 36;
         List<HauntModules.Module> modules = visibleModules();
         int cardW = (mainW - 10) / 2;
+        int listTop = y + 157;
+        int listBottom = y + h - 35;
+        int rows = (modules.size() + 1) / 2;
+        int contentHeight = Math.max(0, rows * 67 - 9);
+        int listHeight = Math.max(0, listBottom - listTop);
+        double maxScroll = Math.max(0, contentHeight - listHeight);
+        scrollOffset = Math.max(0, Math.min(scrollOffset, maxScroll));
         for (int i = 0; i < modules.size(); i++) {
             int col = i % 2, row = i / 2;
             int left = mainX + col * (cardW + 10);
-            int top = y + 157 + row * 67;
-            if (mx >= left && mx <= left + cardW && my >= top && my <= top + 58) {
+            int top = (int)(y + 157 + row * 67 - scrollOffset);
+            if (my >= listTop && my <= listBottom
+                && mx >= left && mx <= left + cardW && my >= top && my <= top + 58) {
                 if (button == 1 && modules.get(i) == HauntModules.Module.XRAY) {
                     client.setScreen(new XrayBlockScreen(this));
                     return true;
@@ -176,6 +195,25 @@ public class HauntScreen extends Screen {
             }
         }
         return super.mouseClicked(mx, my, button);
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        int w = Math.min(700, width - 24), h = Math.min(410, height - 24);
+        int x = (width - w) / 2, y = (height - h) / 2;
+        int mainX = x + 158 + 18;
+        int mainW = w - 158 - 36;
+        int listTop = y + 157;
+        int listBottom = y + h - 35;
+        if (mouseX >= mainX && mouseX <= mainX + mainW && mouseY >= listTop && mouseY <= listBottom) {
+            int rows = (visibleModules().size() + 1) / 2;
+            int contentHeight = Math.max(0, rows * 67 - 9);
+            int listHeight = Math.max(0, listBottom - listTop);
+            double maxScroll = Math.max(0, contentHeight - listHeight);
+            scrollOffset = Math.max(0, Math.min(maxScroll, scrollOffset - verticalAmount * 42));
+            return true;
+        }
+        return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
     }
 
     @Override

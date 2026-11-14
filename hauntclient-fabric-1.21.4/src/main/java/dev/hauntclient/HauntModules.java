@@ -8,7 +8,7 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.decoration.ArmorStandEntity;
-import net.minecraft.util.Hand;
+import net.minecraft.util.Hand;\nimport net.minecraft.client.option.ParticlesMode;\nimport org.lwjgl.glfw.GLFW;\nimport java.util.ArrayDeque;\nimport java.util.Deque;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -18,7 +18,7 @@ import java.util.HashSet;
 
 public final class HauntModules {
     public enum Module {
-        FULLBRIGHT("Fullbright", "Maximum vanilla brightness", Category.RENDER),
+        FULLBRIGHT("Fullbright", "Maximum vanilla brightness", Category.RENDER),\n        FPS_BOOST("FPS Boost", "Reduce particles and entity shadows", Category.RENDER),\n        CUSTOM_CROSSHAIR("Custom Crosshair", "Draw a clean purple custom reticle", Category.HUD),\n        CPS_COUNTER("CPS Counter", "Show recent mouse clicks per second", Category.HUD),
         XRAY("X-Ray Radar", "Radar for ore blocks sent by the server", Category.RENDER),
         COORDINATES("Coordinates", "Show XYZ and dimension", Category.HUD),
         FPS("FPS Counter", "Show current frame rate", Category.HUD),
@@ -40,7 +40,7 @@ public final class HauntModules {
     public enum Category { COMBAT, MOVEMENT, RENDER, PLAYER, WORLD, HUD }
     private static final Set<Module> ENABLED = EnumSet.noneOf(Module.class);
     private static double previousGamma = 1.0;
-    private static boolean gammaCaptured;
+    private static boolean gammaCaptured;\n    private static ParticlesMode previousParticles;\n    private static boolean previousEntityShadows;\n    private static boolean fpsSettingsCaptured;\n    private static boolean previousLeftDown;\n    private static boolean previousRightDown;\n    private static final Deque<Long> CLICK_TIMES = new ArrayDeque<>();
     private static boolean previousAllowFlying;
     private static boolean previousFlying;
     private static int scanIndex;
@@ -98,6 +98,17 @@ public final class HauntModules {
         if (isEnabled(Module.FLY) && client.player != null && !client.player.getAbilities().allowFlying) {
             ENABLED.remove(Module.FLY);
             client.player.sendMessage(net.minecraft.text.Text.literal("§cSerwer odebrał uprawnienie do latania."), true);
+        }
+        if (isEnabled(Module.CPS_COUNTER) && client.getWindow() != null) {
+            long window = client.getWindow().getHandle();
+            boolean leftDown = GLFW.glfwGetMouseButton(window, GLFW.GLFW_MOUSE_BUTTON_1) == GLFW.GLFW_PRESS;
+            boolean rightDown = GLFW.glfwGetMouseButton(window, GLFW.GLFW_MOUSE_BUTTON_2) == GLFW.GLFW_PRESS;
+            long now = System.currentTimeMillis();
+            if (leftDown && !previousLeftDown) CLICK_TIMES.addLast(now);
+            if (rightDown && !previousRightDown) CLICK_TIMES.addLast(now);
+            previousLeftDown = leftDown;
+            previousRightDown = rightDown;
+            while (!CLICK_TIMES.isEmpty() && now - CLICK_TIMES.peekFirst() > 1000L) CLICK_TIMES.removeFirst();
         }
         if (isEnabled(Module.FOLLOW_PLAYER)) updateFollowAssist(client);
         else followTarget = null;
@@ -262,6 +273,19 @@ public final class HauntModules {
                 drawLine(context, "FOLLOW: waiting for a nearby player", x, y);
             }
             y += 12;
+        }
+        if (isEnabled(Module.CPS_COUNTER)) {
+            drawLine(context, "CPS: " + CLICK_TIMES.size(), x, y); y += 12;
+        }
+        if (isEnabled(Module.CUSTOM_CROSSHAIR)) {
+            int cx = context.getScaledWindowWidth() / 2;
+            int cy = context.getScaledWindowHeight() / 2;
+            int color = 0xFFE7D4FF;
+            context.fill(cx - 7, cy, cx - 3, cy + 1, color);
+            context.fill(cx + 4, cy, cx + 8, cy + 1, color);
+            context.fill(cx, cy - 7, cx + 1, cy - 3, color);
+            context.fill(cx, cy + 4, cx + 1, cy + 8, color);
+            context.fill(cx - 1, cy - 1, cx + 2, cy + 2, 0xFFB77A58);
         }
         if (isEnabled(Module.AIM_TRAINER)) {
             int cx = context.getScaledWindowWidth() / 2;

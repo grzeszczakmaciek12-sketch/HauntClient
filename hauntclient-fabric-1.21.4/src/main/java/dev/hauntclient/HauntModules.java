@@ -23,7 +23,8 @@ public final class HauntModules {
         ARMOR_HUD("Armor HUD", "Show equipped armor", Category.PLAYER),
         TOGGLE_SPRINT("Toggle Sprint", "Sprint while moving forward", Category.MOVEMENT),
         FLY("Fly", "Flight only when the server grants flight permission", Category.MOVEMENT),
-        AIM_TRAINER("Training Reticle", "Practice overlay; no auto-aim or attacks", Category.PLAYER);
+        AIM_TRAINER("Aim Trainer", "Practice reticle only; no automatic aiming", Category.COMBAT),
+        BLOCK_INSPECTOR("Block Inspector", "Show the block currently under your crosshair", Category.WORLD);
 
         public final String title, description;
         public final Category category;
@@ -31,7 +32,7 @@ public final class HauntModules {
             this.title = title; this.description = description; this.category = category;
         }
     }
-    public enum Category { RENDER, MOVEMENT, PLAYER, HUD }
+    public enum Category { COMBAT, MOVEMENT, RENDER, PLAYER, WORLD, HUD }
     private static final Set<Module> ENABLED = EnumSet.noneOf(Module.class);
     private static double previousGamma = 1.0;
     private static boolean gammaCaptured;
@@ -152,7 +153,7 @@ public final class HauntModules {
             drawLine(context, "X-RAY RADAR • SERVER-SENT BLOCKS ONLY", x, y); y += 12;
             for (String ore : ORE_RESULTS) { drawLine(context, ore, x, y); y += 12; }
         }
-        if (isEnabled(Module.AIM_TRAINER)) {
+        if (isEnabled(Module.BLOCK_INSPECTOR) && client.crosshairTarget instanceof net.minecraft.util.hit.BlockHitResult hit) {\n            var state = client.world.getBlockState(hit.getBlockPos());\n            String id = net.minecraft.registry.Registries.BLOCK.getId(state.getBlock()).toString();\n            drawLine(context, "BLOCK: " + id, x, y); y += 12;\n        }\n        if (isEnabled(Module.AIM_TRAINER)) {
             int cx = context.getScaledWindowWidth() / 2;
             int cy = context.getScaledWindowHeight() / 2;
             context.fill(cx - 10, cy, cx + 11, cy + 1, 0xFFE7D4FF);

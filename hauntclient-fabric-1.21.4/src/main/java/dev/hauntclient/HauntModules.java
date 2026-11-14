@@ -7,6 +7,8 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.decoration.ArmorStandEntity;
+import net.minecraft.util.Hand;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -25,6 +27,7 @@ public final class HauntModules {
         TOGGLE_SPRINT("Toggle Sprint", "Sprint while moving forward", Category.MOVEMENT),
         FLY("Fly", "Flight only when the server grants flight permission", Category.MOVEMENT),
         AIM_TRAINER("Aim Trainer", "Practice reticle only; no automatic aiming", Category.COMBAT),
+        TRAINING_AURA("Training Aura", "Automatically hits armor-stand training dummies only", Category.COMBAT),
         BLOCK_INSPECTOR("Block Inspector", "Show the block currently under your crosshair", Category.WORLD),
         FOLLOW_PLAYER("Follow Assist", "Smoothly tracks the nearest player; hold W to follow", Category.PLAYER);
 
@@ -98,8 +101,32 @@ public final class HauntModules {
         }
         if (isEnabled(Module.FOLLOW_PLAYER)) updateFollowAssist(client);
         else followTarget = null;
+        if (isEnabled(Module.TRAINING_AURA)) tickTrainingAura(client);
         if (isEnabled(Module.XRAY) && client.player != null && client.world != null) {
             scanNearbyOresIncrementally(client);
+        }
+    }
+
+    /** Attacks armor-stand dummies only; player entities are never considered. */
+    private static void tickTrainingAura(MinecraftClient client) {
+        if (client.player == null || client.world == null || client.interactionManager == null) return;
+        final double range = 4.5;
+        ArmorStandEntity target = null;
+        double nearestDistance = range * range;
+        for (ArmorStandEntity dummy : client.world.getEntitiesByClass(
+            ArmorStandEntity.class,
+            client.player.getBoundingBox().expand(range),
+            ArmorStandEntity::isAlive
+        )) {
+            double distance = client.player.squaredDistanceTo(dummy);
+            if (distance < nearestDistance) {
+                nearestDistance = distance;
+                target = dummy;
+            }
+        }
+        if (target != null && client.player.getAttackCooldownProgress(0.5f) >= 1.0f) {
+            client.interactionManager.attackEntity(client.player, target);
+            client.player.swingHand(Hand.MAIN_HAND);
         }
     }
 
@@ -228,7 +255,7 @@ public final class HauntModules {
             String id = net.minecraft.registry.Registries.BLOCK.getId(state.getBlock()).toString();
             drawLine(context, "BLOCK: " + id, x, y); y += 12;
         }
-        if (isEnabled(Module.FOLLOW_PLAYER)) {
+        if (isEnabled(Module.TRAINING_AURA)) {\n            drawLine(context, "TRAINING AURA: ARMOR STANDS ONLY", x, y); y += 12;\n        }\n        if (isEnabled(Module.FOLLOW_PLAYER)) {
             if (followTarget != null) {
                 drawLine(context, "FOLLOW: " + followTarget.getName().getString() + "  " + String.format(java.util.Locale.ROOT, "%.1fm", client.player.distanceTo(followTarget)), x, y);
             } else {

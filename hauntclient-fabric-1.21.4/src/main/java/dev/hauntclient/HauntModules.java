@@ -56,11 +56,9 @@ public final class HauntModules {
         ARMOR_HUD("Armor HUD", "Show equipped armor", Category.PLAYER),
         TOGGLE_SPRINT("Toggle Sprint", "Sprint while moving forward", Category.MOVEMENT),
         FLY("Fly", "Flight only when the server grants flight permission", Category.MOVEMENT),
-        AIM_TRAINER("Aim Trainer", "Practice reticle only; no automatic aiming", Category.COMBAT),
-        TRAINING_AURA("Training Aura", "Automatically hits armor-stand training dummies only", Category.COMBAT),
         BLOCK_INSPECTOR("Block Inspector", "Show the block currently under your crosshair", Category.WORLD),
         FOLLOW_PLAYER("Follow Assist", "Smoothly tracks the nearest player; hold W to follow", Category.PLAYER),
-        AIM_ASSIST("Aim Assist", "Softly helps aim at nearby hostile mobs", Category.COMBAT),
+        AIM_ASSIST("AIM ASSIST", "Softly helps aim at nearby hostile mobs", Category.COMBAT),
         FREECAM("Freecam", "Move the camera while your player stays still", Category.MOVEMENT),
         AUTO_TOOLS("Auto Tools", "Automatically select the best hotbar tool for the block you mine", Category.PLAYER),
         AUTO_EAT("Auto Eat", "Automatically eat from your hotbar when hunger is low", Category.PLAYER),
@@ -187,7 +185,6 @@ public final class HauntModules {
         if (isEnabled(Module.AUTO_FISH)) tickAutoFish(client);
         if (isEnabled(Module.FOLLOW_PLAYER)) updateFollowAssist(client);
         else followTarget = null;
-        if (isEnabled(Module.TRAINING_AURA)) tickTrainingAura(client);
         if (isEnabled(Module.AIM_ASSIST)) tickAimAssist(client);
         if (isEnabled(Module.XRAY) && client.player != null && client.world != null) {
             scanNearbyOresIncrementally(client);
@@ -373,7 +370,6 @@ public final class HauntModules {
             + (wantedPitch - client.player.getPitch()) * 0.12f, -90.0f, 90.0f));
     }
 
-    /** Attacks armor-stand dummies only; player entities are never considered. */
     private static void tickTrainingAura(MinecraftClient client) {
         if (client.player == null || client.world == null || client.interactionManager == null) return;
         final double range = 4.5;
@@ -730,9 +726,6 @@ public final class HauntModules {
             String id = net.minecraft.registry.Registries.BLOCK.getId(state.getBlock()).toString();
             drawLine(context, "BLOCK: " + id, x, y); y += 12;
         }
-        if (isEnabled(Module.TRAINING_AURA)) {
-            drawLine(context, "TRAINING AURA: ARMOR STANDS ONLY", x, y); y += 12;
-        }
         if (isEnabled(Module.FOLLOW_PLAYER)) {
             if (followTarget != null) {
                 drawLine(context, "FOLLOW: " + followTarget.getName().getString() + "  " + String.format(java.util.Locale.ROOT, "%.1fm", client.player.distanceTo(followTarget)), x, y);
@@ -753,13 +746,6 @@ public final class HauntModules {
             context.fill(cx, cy - 7, cx + 1, cy - 3, color);
             context.fill(cx, cy + 4, cx + 1, cy + 8, color);
             context.fill(cx - 1, cy - 1, cx + 2, cy + 2, 0xFFB77A58);
-        }
-        if (isEnabled(Module.AIM_TRAINER)) {
-            int cx = context.getScaledWindowWidth() / 2;
-            int cy = context.getScaledWindowHeight() / 2;
-            context.fill(cx - 10, cy, cx + 11, cy + 1, 0xFFE7D4FF);
-            context.fill(cx, cy - 10, cx + 1, cy + 11, 0xFFE7D4FF);
-            context.drawText(client.textRenderer, "TRAINING", cx + 14, cy - 4, 0xFFE7D4FF, true);
         }
         if (isEnabled(Module.ARMOR_HUD)) {
             int ax = 8, ay = context.getScaledWindowHeight() - 22;

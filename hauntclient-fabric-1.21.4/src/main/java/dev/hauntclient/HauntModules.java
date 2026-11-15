@@ -56,6 +56,7 @@ public final class HauntModules {
         ARMOR_HUD("Armor HUD", "Show equipped armor", Category.PLAYER),
         TOGGLE_SPRINT("Toggle Sprint", "Sprint while moving forward", Category.MOVEMENT),
         AUTOWALK("AutoWalk", "Automatically walk forward while enabled", Category.MOVEMENT),
+        JESUS("Jesus", "Keeps the player buoyant at the water surface", Category.MOVEMENT),
         FLY("Fly", "Flight only when the server grants flight permission", Category.MOVEMENT),
         BLOCK_INSPECTOR("Block Inspector", "Show the block currently under your crosshair", Category.WORLD),
         FOLLOW_PLAYER("Follow Assist", "Smoothly tracks the nearest player; hold W to follow", Category.PLAYER),
@@ -171,6 +172,7 @@ public final class HauntModules {
         } else if (isEnabled(Module.AUTOWALK) && client.options != null && client.currentScreen != null) {
             client.options.forwardKey.setPressed(false);
         }
+        if (isEnabled(Module.JESUS)) tickJesus(client);
         if (isEnabled(Module.FREECAM)) tickFreecam(client);
         if (isEnabled(Module.FREELOOK)) Freelook.tick(client);
         if (isEnabled(Module.AUTO_TOOLS)) tickAutoTools(client);
@@ -197,6 +199,18 @@ public final class HauntModules {
         if (isEnabled(Module.AIM_ASSIST)) tickAimAssist(client);
         if (isEnabled(Module.XRAY) && client.player != null && client.world != null) {
             scanNearbyOresIncrementally(client);
+        }
+    }
+
+    /** Keeps the player at the water surface; does not alter movement on dry land. */
+    private static void tickJesus(MinecraftClient client) {
+        if (client.player == null || client.world == null || client.currentScreen != null) return;
+        var player = client.player;
+        if (player.isTouchingWater() && !player.isSubmergedInWater()
+            && !player.isSneaking()) {
+            Vec3d velocity = player.getVelocity();
+            player.setVelocity(velocity.x, Math.max(velocity.y, 0.08), velocity.z);
+            player.fallDistance = 0.0f;
         }
     }
 

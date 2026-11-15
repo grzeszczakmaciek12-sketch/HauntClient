@@ -37,10 +37,10 @@ public final class HauntModules {
         FULLBRIGHT("Fullbright", "Maximum vanilla brightness", Category.RENDER),
         FPS_BOOST("FPS Boost", "Disable entity shadows for a lighter render load", Category.RENDER),
         CUSTOM_CROSSHAIR("Custom Crosshair", "Draw a clean purple custom reticle", Category.HUD),
-        TRACERS("Tracers", "Draw lines to nearby mobs and players", Category.RENDER),
+        TRACERS("Tracers", "Draw lines to nearby players only", Category.RENDER),
         ITEM_ESP("Item ESP", "Highlight dropped items; RMB changes color", Category.RENDER),
         BLOCK_ESP("Block ESP", "Outline the block under your crosshair and draw a line to it", Category.RENDER),
-        NAMETAGS("Item Labels", "Show names and stack counts for dropped items only", Category.RENDER),
+        NAMETAGS("NameTags", "Show held item names above players, without player names", Category.RENDER),
         AUTO_FISH("Auto Fish", "Automatically reels in bites and casts again", Category.PLAYER),
         CPS_COUNTER("CPS Counter", "Show recent mouse clicks per second", Category.HUD),
         XRAY("X-Ray Radar", "Radar for ore blocks sent by the server", Category.RENDER),
@@ -85,7 +85,7 @@ public final class HauntModules {
     private static BlockPos scanOrigin;
     private static PlayerEntity followTarget;
     private static long lastFollowRenderNanos;
-    private static double previousBobberVelocityY;
+    private static double previousBobberY;
     private static long autoFishNextActionAt;
     private static boolean autoFishHasCast;
     private static boolean autoFishRecastPending;
@@ -119,7 +119,7 @@ public final class HauntModules {
                 abilities.flying = previousFlying && abilities.allowFlying;
             }
             if (module == Module.XRAY) { ORE_RESULTS.clear(); scanIndex = 0; scanOrigin = null; }
-            if (module == Module.AUTO_FISH) { autoFishHasCast = false; autoFishRecastPending = false; previousBobberVelocityY = 0.0; }
+            if (module == Module.AUTO_FISH) { autoFishHasCast = false; autoFishRecastPending = false; previousBobberY = 0.0; }
         } else {
             ENABLED.add(module);
             if (module == Module.FULLBRIGHT && client.options != null) {
@@ -185,34 +185,82 @@ public final class HauntModules {
         }
     }
 
-    /** Reels on the bobber's splash impulse, then casts again with the selected rod. */
+    /**
+     * Finds a nearby open water surface, aims the rod toward it, casts when no
+     * bobber exists, and reels when the bobber is pulled sharply underwater.
+     */
     private static void tickAutoFish(MinecraftClient client) {
         if (client.player == null || client.world == null || client.interactionManager == null) return;
-        ItemStack held = client.player.getMainHandStack();
-        if (!held.isOf(Items.FISHING_ROD)) return;
+        if (!client.player.getMainHandStack().isOf(Items.FISHING_ROD)) return;
+
         long now = System.currentTimeMillis();
         FishingBobberEntity bobber = client.player.fishHook;
         if (bobber != null) {
             autoFishHasCast = true;
+            double bobberY = bobber.getY();
             double velocityY = bobber.getVelocity().y;
-            boolean biteImpulse = bobber.isTouchingWater() && previousBobberVelocityY < -0.02 && velocityY > 0.02;
-            previousBobberVelocityY = velocityY;
-            if (biteImpulse && now >= autoFishNextActionAt) {
+            boolean bobberSinking = bobber.isTouchingWater()
+                && previousBobberY > 0.0
+                && bobberY < previousBobberY - 0.035
+                && velocityY < -0.025;
+            previousBobberY = bobberY;
+            if (bobberSinking && now >= autoFishNextActionAt) {
                 client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
                 client.player.swingHand(Hand.MAIN_HAND);
-                autoFishNextActionAt = now + 650L;
+                autoFishNextActionAt = now + 850L;
                 autoFishRecastPending = true;
+                previousBobberY = 0.0;
             }
             return;
         }
-        previousBobberVelocityY = 0.0;
+
+        previousBobberY = 0.0;
         if ((!autoFishHasCast || autoFishRecastPending) && now >= autoFishNextActionAt) {
+            BlockPos waterTarget = findNearbyWater(client);
+            if (waterTarget == null) return;
+            aimAtWater(client, waterTarget);
             client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
             client.player.swingHand(Hand.MAIN_HAND);
             autoFishHasCast = true;
             autoFishRecastPending = false;
-            autoFishNextActionAt = now + 900L;
+            autoFishNextActionAt = now + 1100L;
         }
+    }
+
+    /** Chooses the nearest still-water block with air above it, within fishing range. */
+    private static BlockPos findNearbyWater(MinecraftClient client) {
+        BlockPos origin = client.player.getBlockPos();
+        BlockPos best = null;
+        double bestDistance = 18.0 * 18.0;
+        for (int dx = -18; dx <= 18; dx++) {
+            for (int dz = -18; dz <= 18; dz++) {
+                for (int dy = -5; dy <= 5; dy++) {
+                    BlockPos pos = origin.add(dx, dy, dz);
+                    var fluid = client.world.getFluidState(pos);
+                    if (!fluid.isStill() || !fluid.isOf(net.minecraft.fluid.Fluids.WATER)
+                        || !client.world.getBlockState(pos.up()).isAir()) continue;
+                    double distance = client.player.squaredDistanceTo(
+                        pos.getX() + 0.5, pos.getY() + 0.85, pos.getZ() + 0.5);
+                    if (distance < bestDistance) {
+                        bestDistance = distance;
+                        best = pos.toImmutable();
+                    }
+                }
+            }
+        }
+        return best;
+    }
+
+    /** Rotates the view toward the selected water surface before casting. */
+    private static void aimAtWater(MinecraftClient client, BlockPos water) {
+        Vec3d eye = client.player.getEyePos();
+        Vec3d target = new Vec3d(water.getX() + 0.5, water.getY() + 0.82, water.getZ() + 0.5);
+        Vec3d delta = target.subtract(eye);
+        double horizontal = Math.sqrt(delta.x * delta.x + delta.z * delta.z);
+        float yaw = (float) (Math.toDegrees(Math.atan2(delta.z, delta.x)) - 90.0);
+        float pitch = (float) -Math.toDegrees(Math.atan2(delta.y, horizontal));
+        client.player.setYaw(yaw);
+        client.player.setPitch(MathHelper.clamp(pitch, -90.0f, 90.0f));
     }
     private static void updateFollowAssist(MinecraftClient client) {
         if (client.player == null || client.world == null) {
@@ -343,17 +391,24 @@ public final class HauntModules {
 
         if (isEnabled(Module.NAMETAGS)) {
             TextRenderer textRenderer = client.textRenderer;
-            for (ItemEntity item : context.world().getEntitiesByClass(
-                ItemEntity.class,
-                client.player.getBoundingBox().expand(48.0),
-                e -> e.isAlive() && !e.getStack().isEmpty()
-            )) {
-                ItemStack stack = item.getStack();
-                Text label = stack.getName();
-                if (stack.getCount() > 1) label = Text.literal(label.getString() + " x" + stack.getCount());
-                drawWorldLabel(context, label, item.getX(),
-                    item.getY() + item.getHeight() + 0.2, item.getZ(),
-                    0xFFFFD27A, textRenderer);
+            for (PlayerEntity other : context.world().getPlayers()) {
+                if (other == client.player || !other.isAlive()
+                    || client.player.squaredDistanceTo(other) > 48.0 * 48.0) continue;
+                ItemStack mainHand = other.getMainHandStack();
+                ItemStack offHand = other.getOffHandStack();
+                String heldItems = "";
+                if (!mainHand.isEmpty()) heldItems = mainHand.getName().getString()
+                    + (mainHand.getCount() > 1 ? " x" + mainHand.getCount() : "");
+                if (!offHand.isEmpty()) {
+                    String offLabel = offHand.getName().getString()
+                        + (offHand.getCount() > 1 ? " x" + offHand.getCount() : "");
+                    heldItems = heldItems.isEmpty() ? offLabel : heldItems + " | " + offLabel;
+                }
+                if (!heldItems.isEmpty()) {
+                    drawWorldLabel(context, Text.literal(heldItems), other.getX(),
+                        other.getY() + other.getHeight() + 0.35, other.getZ(),
+                        0xFFFFD27A, textRenderer);
+                }
             }
         }
 
@@ -369,20 +424,16 @@ public final class HauntModules {
             }
         }
 
-        for (LivingEntity entity : context.world().getEntitiesByClass(
-            LivingEntity.class,
-            client.player.getBoundingBox().expand(48.0),
-            e -> e.isAlive() && e != client.player && !e.isSpectator()
-        )) {
-            Vec3d end = entity.getPos().add(0.0, entity.getHeight() * 0.5, 0.0);
-            boolean playerTarget = entity instanceof PlayerEntity;
-            int red = playerTarget ? 255 : 166;
-            int green = playerTarget ? 116 : 105;
-            int blue = playerTarget ? 70 : 220;
-            lines.vertex(entry.getPositionMatrix(), (float) start.x, (float) start.y, (float) start.z)
-                .color(red, green, blue, 210).normal(entry, 0.0f, 1.0f, 0.0f);
-            lines.vertex(entry.getPositionMatrix(), (float) end.x, (float) end.y, (float) end.z)
-                .color(red, green, blue, 210).normal(entry, 0.0f, 1.0f, 0.0f);
+        if (isEnabled(Module.TRACERS)) {
+            for (PlayerEntity other : context.world().getPlayers()) {
+                if (other == client.player || !other.isAlive() || other.isSpectator()
+                    || client.player.squaredDistanceTo(other) > 48.0 * 48.0) continue;
+                Vec3d end = other.getPos().add(0.0, other.getHeight() * 0.5, 0.0);
+                lines.vertex(entry.getPositionMatrix(), (float) start.x, (float) start.y, (float) start.z)
+                    .color(255, 116, 70, 210).normal(entry, 0.0f, 1.0f, 0.0f);
+                lines.vertex(entry.getPositionMatrix(), (float) end.x, (float) end.y, (float) end.z)
+                    .color(255, 116, 70, 210).normal(entry, 0.0f, 1.0f, 0.0f);
+            }
         }
         matrices.pop();
     }

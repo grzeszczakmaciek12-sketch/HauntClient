@@ -61,6 +61,7 @@ public final class HauntModules {
         FLY("Fly", "Flight only when the server grants flight permission", Category.MOVEMENT),
         BLOCK_INSPECTOR("Block Inspector", "Show the block currently under your crosshair", Category.WORLD),
         AIM_ASSIST("Aim Assist", "Smoothly tracks nearby hostile mobs; no player targeting or attacks", Category.COMBAT),
+        KILL_AURA("Kill Aura", "Attacks nearby hostile mobs and training dummies; never targets players", Category.COMBAT),
         XCARRY("XCarry", "Keep crafting-grid items when closing inventory", Category.PLAYER),
         FREECAM("Freecam", "Move the camera while your player stays still", Category.MOVEMENT),
         AUTO_TOOLS("Auto Tools", "Automatically select the best hotbar tool for the block you mine", Category.PLAYER),
@@ -198,6 +199,7 @@ public final class HauntModules {
         if (isEnabled(Module.AUTO_FISH)) tickAutoFish(client);
         if (isEnabled(Module.AIM_ASSIST)) updateFollowAssist(client);
         else followTarget = null;
+        if (isEnabled(Module.KILL_AURA)) tickKillAura(client);
         if (isEnabled(Module.XRAY) && client.player != null && client.world != null) {
             scanNearbyOresIncrementally(client);
         }
@@ -417,20 +419,31 @@ public final class HauntModules {
         float wantedYaw = (float)(Math.toDegrees(Math.atan2(delta.z, delta.x)) - 90.0);
         float wantedPitch = (float)-Math.toDegrees(Math.atan2(delta.y, horizontal));
         client.player.setYaw(client.player.getYaw()
-            + MathHelper.wrapDegrees(wantedYaw - client.player.getYaw()) * 0.12f);
-        client.player.setPitch(MathHelper.clamp(client.player.getPitch()
-            + (wantedPitch - client.player.getPitch()) * 0.12f, -90.0f, 90.0f));
-    }
+            + MathHelper.wrapDegrees(wantedYaw - client.p    private static void tickKillAura(MinecraftClient client) {
+        if (client.player == null || client.world == null || client.interactionManager == null
+            || client.currentScreen != null || client.player.isSpectator()) return;
 
-    private static void tickTrainingAura(MinecraftClient client) {
-        if (client.player == null || client.world == null || client.interactionManager == null) return;
         final double range = 4.5;
-        ArmorStandEntity target = null;
+        LivingEntity target = null;
         double nearestDistance = range * range;
+
+        for (HostileEntity mob : client.world.getEntitiesByClass(
+            HostileEntity.class,
+            client.player.getBoundingBox().expand(range),
+            entity -> entity.isAlive() && !entity.isSpectator()
+                && !entity.isInvulnerable() && client.player.canSee(entity)
+        )) {
+            double distance = client.player.squaredDistanceTo(mob);
+            if (distance < nearestDistance) {
+                nearestDistance = distance;
+                target = mob;
+            }
+        }
+
         for (ArmorStandEntity dummy : client.world.getEntitiesByClass(
             ArmorStandEntity.class,
             client.player.getBoundingBox().expand(range),
-            ArmorStandEntity::isAlive
+            entity -> entity.isAlive() && !entity.isInvulnerable()
         )) {
             double distance = client.player.squaredDistanceTo(dummy);
             if (distance < nearestDistance) {
@@ -438,7 +451,13 @@ public final class HauntModules {
                 target = dummy;
             }
         }
+
         if (target != null && client.player.getAttackCooldownProgress(0.5f) >= 1.0f) {
+            client.interactionManager.attackEntity(client.player, target);
+            client.player.swingHand(Hand.MAIN_HAND);
+        }
+    }
+getAttackCooldownProgress(0.5f) >= 1.0f) {
             client.interactionManager.attackEntity(client.player, target);
             client.player.swingHand(Hand.MAIN_HAND);
         }

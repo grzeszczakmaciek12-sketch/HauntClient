@@ -64,7 +64,13 @@ public class HauntClient implements ClientModInitializer {
 
             if (client.currentScreen == null) {
                 for (Map.Entry<HauntModules.Module, KeyBinding> entry : MODULE_BINDS.entrySet()) {
-                    while (entry.getValue().wasPressed()) HauntModules.toggle(entry.getKey());
+                    // One physical press = one toggle. Drain queued repeat events so holding a key
+                    // cannot rapidly flip the module on and off.
+                    boolean pressed = entry.getValue().wasPressed();
+                    while (entry.getValue().wasPressed()) {
+                        // Consume duplicate/repeat events from the same press.
+                    }
+                    if (pressed) HauntModules.toggle(entry.getKey());
                 }
             }
 

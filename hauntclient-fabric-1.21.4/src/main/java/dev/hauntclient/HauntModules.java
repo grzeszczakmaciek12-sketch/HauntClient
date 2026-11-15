@@ -10,6 +10,8 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.ItemEntity;
+import net.minecraft.util.math.Box;
 import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.util.math.Vec3d;
@@ -31,6 +33,7 @@ public final class HauntModules {
         FPS_BOOST("FPS Boost", "Disable entity shadows for a lighter render load", Category.RENDER),
         CUSTOM_CROSSHAIR("Custom Crosshair", "Draw a clean purple custom reticle", Category.HUD),
         TRACERS("Tracers", "Draw lines to nearby mobs and players", Category.RENDER),
+        ITEM_ESP("Item ESP", "Highlight dropped items; RMB changes color", Category.RENDER),
         CPS_COUNTER("CPS Counter", "Show recent mouse clicks per second", Category.HUD),
         XRAY("X-Ray Radar", "Radar for ore blocks sent by the server", Category.RENDER),
         COORDINATES("Coordinates", "Show XYZ and dimension", Category.HUD),
@@ -52,6 +55,15 @@ public final class HauntModules {
     }
     public enum Category { COMBAT, MOVEMENT, RENDER, PLAYER, WORLD, HUD }
     private static final Set<Module> ENABLED = EnumSet.noneOf(Module.class);
+    private static final int[] ITEM_ESP_COLORS = {0xFFFF55FF, 0xFF55FFFF, 0xFFFFFF55, 0xFFFF5555, 0xFF55FF55, 0xFFFFFFFF};
+    private static int itemEspColorIndex = 0;
+    public static void cycleItemEspColor() { itemEspColorIndex = (itemEspColorIndex + 1) % ITEM_ESP_COLORS.length; }
+    public static String getItemEspColorName() {
+        return switch (itemEspColorIndex) {
+            case 1 -> "CYAN"; case 2 -> "YELLOW"; case 3 -> "RED";
+            case 4 -> "GREEN"; case 5 -> "WHITE"; default -> "MAGENTA";
+        };
+    }
     private static double previousGamma = 1.0;
     private static boolean gammaCaptured;
     private static boolean previousEntityShadows;
@@ -270,6 +282,18 @@ public final class HauntModules {
         var entry = matrices.peek();
         VertexConsumer lines = context.consumers().getBuffer(RenderLayer.getLines());
 
+        if (isEnabled(Module.ITEM_ESP)) {
+            int color = ITEM_ESP_COLORS[itemEspColorIndex];
+            for (ItemEntity item : context.world().getEntitiesByClass(
+                ItemEntity.class,
+                client.player.getBoundingBox().expand(48.0),
+                e -> e.isAlive() && !e.getStack().isEmpty()
+            )) {
+                Box box = item.getBoundingBox().expand(0.06).offset(-camera.x, -camera.y, -camera.z);
+                drawBoxLines(lines, entry, box, color);
+            }
+        }
+
         for (LivingEntity entity : context.world().getEntitiesByClass(
             LivingEntity.class,
             client.player.getBoundingBox().expand(48.0),
@@ -286,6 +310,24 @@ public final class HauntModules {
                 .color(red, green, blue, 210).normal(entry, 0.0f, 1.0f, 0.0f);
         }
         matrices.pop();
+    }
+
+    private static void drawBoxLines(VertexConsumer lines, net.minecraft.client.util.math.MatrixStack.Entry entry, Box b, int color) {
+        float r = ((color >> 16) & 255) / 255.0f;
+        float g = ((color >> 8) & 255) / 255.0f;
+        float bl = (color & 255) / 255.0f;
+        float[][] p = {
+            {(float)b.minX,(float)b.minY,(float)b.minZ}, {(float)b.maxX,(float)b.minY,(float)b.minZ},
+            {(float)b.maxX,(float)b.minY,(float)b.maxZ}, {(float)b.minX,(float)b.minY,(float)b.maxZ},
+            {(float)b.minX,(float)b.maxY,(float)b.minZ}, {(float)b.maxX,(float)b.maxY,(float)b.minZ},
+            {(float)b.maxX,(float)b.maxY,(float)b.maxZ}, {(float)b.minX,(float)b.maxY,(float)b.maxZ}
+        };
+        int[][] edges = {{0,1},{1,2},{2,3},{3,0},{4,5},{5,6},{6,7},{7,4},{0,4},{1,5},{2,6},{3,7}};
+        for (int[] edge : edges) {
+            float[] a = p[edge[0]], z = p[edge[1]];
+            lines.vertex(entry.getPositionMatrix(), a[0], a[1], a[2]).color(r,g,bl,1.0f).normal(entry,0,1,0);
+            lines.vertex(entry.getPositionMatrix(), z[0], z[1], z[2]).color(r,g,bl,1.0f).normal(entry,0,1,0);
+        }
     }
 
     private static void renderHud(DrawContext context) {

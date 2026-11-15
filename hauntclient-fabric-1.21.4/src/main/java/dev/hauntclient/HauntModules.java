@@ -269,15 +269,12 @@ public final class HauntModules {
 
         // PlayerScreenHandler maps hotbar inventory slots 0-8 to handler slots 36-44.
         int sourceHandlerSlot = inventorySlot < 9 ? inventorySlot + 36 : inventorySlot;
-        int offhandHandlerSlot = 45;
         int syncId = player.currentScreenHandler.syncId;
 
-        client.interactionManager.clickSlot(syncId, sourceHandlerSlot, 0,
-            SlotActionType.PICKUP, player);
-        client.interactionManager.clickSlot(syncId, offhandHandlerSlot, 0,
-            SlotActionType.PICKUP, player);
-        client.interactionManager.clickSlot(syncId, sourceHandlerSlot, 0,
-            SlotActionType.PICKUP, player);
+        // Vanilla's offhand swap action (key/button 40) moves the item in one
+        // inventory action instead of three separate pickup clicks.
+        client.interactionManager.clickSlot(syncId, sourceHandlerSlot, 40,
+            SlotActionType.SWAP, player);
     }
 
     /** Eats the best available hotbar food when hunger drops to 16 or less. */

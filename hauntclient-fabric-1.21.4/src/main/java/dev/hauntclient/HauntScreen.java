@@ -137,6 +137,9 @@ public class HauntScreen extends Screen {
             if (module == HauntModules.Module.ITEM_ESP)
                 ctx.drawText(textRenderer, "RMB: COLOR " + HauntModules.getItemEspColorName(),
                     left + 12, top + 44, GOLD, false);
+            if (module == HauntModules.Module.TRACERS)
+                ctx.drawText(textRenderer, "RMB: TARGET " + HauntModules.getTracerTarget().name(),
+                    left + 12, top + 44, GOLD, false);
         }
 
         if (modules.isEmpty())
@@ -193,6 +196,10 @@ public class HauntScreen extends Screen {
                 }
                 if (button == 1 && modules.get(i) == HauntModules.Module.ITEM_ESP) {
                     HauntModules.cycleItemEspColor();
+                    return true;
+                }
+                if (button == 1 && modules.get(i) == HauntModules.Module.TRACERS) {
+                    HauntModules.cycleTracerTarget();
                     return true;
                 }
                 if (button == 0) {

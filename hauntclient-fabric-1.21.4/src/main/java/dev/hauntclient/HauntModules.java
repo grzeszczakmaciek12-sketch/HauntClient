@@ -21,6 +21,7 @@ import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.entity.decoration.ArmorStandEntity;
+import net.minecraft.entity.mob.HostileEntity;
 import net.minecraft.util.Hand;
 import org.lwjgl.glfw.GLFW;
 import java.util.ArrayDeque;
@@ -53,7 +54,8 @@ public final class HauntModules {
         AIM_TRAINER("Aim Trainer", "Practice reticle only; no automatic aiming", Category.COMBAT),
         TRAINING_AURA("Training Aura", "Automatically hits armor-stand training dummies only", Category.COMBAT),
         BLOCK_INSPECTOR("Block Inspector", "Show the block currently under your crosshair", Category.WORLD),
-        FOLLOW_PLAYER("Follow Assist", "Smoothly tracks the nearest player; hold W to follow", Category.PLAYER);
+        FOLLOW_PLAYER("Follow Assist", "Smoothly tracks the nearest player; hold W to follow", Category.PLAYER),
+        AIM_ASSIST("Aim Assist", "Softly helps aim at nearby hostile mobs", Category.COMBAT);
 
         public final String title, description;
         public final Category category;
@@ -163,9 +165,36 @@ public final class HauntModules {
         if (isEnabled(Module.FOLLOW_PLAYER)) updateFollowAssist(client);
         else followTarget = null;
         if (isEnabled(Module.TRAINING_AURA)) tickTrainingAura(client);
+        if (isEnabled(Module.AIM_ASSIST)) tickAimAssist(client);
         if (isEnabled(Module.XRAY) && client.player != null && client.world != null) {
             scanNearbyOresIncrementally(client);
         }
+    }
+
+    /** Gentle PvE aim help: hostile mobs only; never targets players or attacks. */
+    private static void tickAimAssist(MinecraftClient client) {
+        if (client.player == null || client.world == null || client.currentScreen != null) return;
+        HostileEntity target = null;
+        double bestDistance = 6.0 * 6.0;
+        for (HostileEntity mob : client.world.getEntitiesByClass(
+            HostileEntity.class, client.player.getBoundingBox().expand(6.0),
+            entity -> entity.isAlive() && !entity.isSpectator() && client.player.canSee(entity)
+        )) {
+            double distance = client.player.squaredDistanceTo(mob);
+            if (distance < bestDistance) {
+                bestDistance = distance;
+                target = mob;
+            }
+        }
+        if (target == null) return;
+        Vec3d delta = target.getEyePos().subtract(client.player.getEyePos());
+        double horizontal = Math.sqrt(delta.x * delta.x + delta.z * delta.z);
+        float wantedYaw = (float)(Math.toDegrees(Math.atan2(delta.z, delta.x)) - 90.0);
+        float wantedPitch = (float)-Math.toDegrees(Math.atan2(delta.y, horizontal));
+        client.player.setYaw(client.player.getYaw()
+            + MathHelper.wrapDegrees(wantedYaw - client.player.getYaw()) * 0.12f);
+        client.player.setPitch(MathHelper.clamp(client.player.getPitch()
+            + (wantedPitch - client.player.getPitch()) * 0.12f, -90.0f, 90.0f));
     }
 
     /** Attacks armor-stand dummies only; player entities are never considered. */

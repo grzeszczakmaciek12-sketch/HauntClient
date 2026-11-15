@@ -1,12 +1,18 @@
 package dev.hauntclient;
 
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
+import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
+import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.client.render.RenderLayer;
+import net.minecraft.client.render.VertexConsumer;
+import net.minecraft.util.math.Vec3d;
 import net.minecraft.entity.decoration.ArmorStandEntity;
 import net.minecraft.util.Hand;
 import org.lwjgl.glfw.GLFW;
@@ -24,6 +30,7 @@ public final class HauntModules {
         FULLBRIGHT("Fullbright", "Maximum vanilla brightness", Category.RENDER),
         FPS_BOOST("FPS Boost", "Disable entity shadows for a lighter render load", Category.RENDER),
         CUSTOM_CROSSHAIR("Custom Crosshair", "Draw a clean purple custom reticle", Category.HUD),
+        TRACERS("Tracers", "Draw lines to nearby mobs and players", Category.RENDER),
         CPS_COUNTER("CPS Counter", "Show recent mouse clicks per second", Category.HUD),
         XRAY("X-Ray Radar", "Radar for ore blocks sent by the server", Category.RENDER),
         COORDINATES("Coordinates", "Show XYZ and dimension", Category.HUD),
@@ -244,6 +251,41 @@ public final class HauntModules {
 
     public static void registerHud() {
         HudRenderCallback.EVENT.register((context, tickCounter) -> renderHud(context));
+        WorldRenderEvents.AFTER_ENTITIES.register(HauntModules::renderTracers);
+    }
+
+    /** World-space visual lines to nearby living entities; does not interact with targets. */
+    private static void renderTracers(WorldRenderContext context) {
+        if (!isEnabled(Module.TRACERS) || context.world() == null
+            || context.matrixStack() == null || context.consumers() == null) return;
+
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client.player == null) return;
+
+        Vec3d camera = context.camera().getPos();
+        Vec3d start = camera.add(0.0, -0.35, 0.0);
+        var matrices = context.matrixStack();
+        matrices.push();
+        matrices.translate(-camera.x, -camera.y, -camera.z);
+        var entry = matrices.peek();
+        VertexConsumer lines = context.consumers().getBuffer(RenderLayer.getLines());
+
+        for (LivingEntity entity : context.world().getEntitiesByClass(
+            LivingEntity.class,
+            client.player.getBoundingBox().expand(48.0),
+            e -> e.isAlive() && e != client.player && !e.isSpectator()
+        )) {
+            Vec3d end = entity.getPos().add(0.0, entity.getHeight() * 0.5, 0.0);
+            boolean playerTarget = entity instanceof PlayerEntity;
+            int red = playerTarget ? 255 : 166;
+            int green = playerTarget ? 116 : 105;
+            int blue = playerTarget ? 70 : 220;
+            lines.vertex(entry.getPositionMatrix(), (float) start.x, (float) start.y, (float) start.z)
+                .color(red, green, blue, 210).normal(entry, 0.0f, 1.0f, 0.0f);
+            lines.vertex(entry.getPositionMatrix(), (float) end.x, (float) end.y, (float) end.z)
+                .color(red, green, blue, 210).normal(entry, 0.0f, 1.0f, 0.0f);
+        }
+        matrices.pop();
     }
 
     private static void renderHud(DrawContext context) {

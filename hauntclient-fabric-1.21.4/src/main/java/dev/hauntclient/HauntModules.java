@@ -11,6 +11,8 @@ import net.minecraft.util.math.MathHelper;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.ItemEntity;
+import net.minecraft.entity.projectile.FishingBobberEntity;
+import net.minecraft.item.Items;
 import net.minecraft.util.math.Box;
 import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.VertexConsumer;
@@ -34,6 +36,7 @@ public final class HauntModules {
         CUSTOM_CROSSHAIR("Custom Crosshair", "Draw a clean purple custom reticle", Category.HUD),
         TRACERS("Tracers", "Draw lines to nearby mobs and players", Category.RENDER),
         ITEM_ESP("Item ESP", "Highlight dropped items; RMB changes color", Category.RENDER),
+        AUTO_FISH("Auto Fish", "Automatically reels in bites and casts again", Category.PLAYER),
         CPS_COUNTER("CPS Counter", "Show recent mouse clicks per second", Category.HUD),
         XRAY("X-Ray Radar", "Radar for ore blocks sent by the server", Category.RENDER),
         COORDINATES("Coordinates", "Show XYZ and dimension", Category.HUD),
@@ -77,6 +80,10 @@ public final class HauntModules {
     private static BlockPos scanOrigin;
     private static PlayerEntity followTarget;
     private static long lastFollowRenderNanos;
+    private static double previousBobberVelocityY;
+    private static long autoFishNextActionAt;
+    private static boolean autoFishHasCast;
+    private static boolean autoFishRecastPending;
     private static final List<String> ORE_RESULTS = new ArrayList<>();
     private static final Set<String> XRAY_BLOCKS = new HashSet<>(List.of("coal_ore", "deepslate_coal_ore", "iron_ore", "deepslate_iron_ore", "gold_ore", "deepslate_gold_ore", "diamond_ore", "deepslate_diamond_ore", "emerald_ore", "deepslate_emerald_ore", "redstone_ore", "deepslate_redstone_ore", "lapis_ore", "deepslate_lapis_ore", "copper_ore", "deepslate_copper_ore", "ancient_debris"));
     private HauntModules() {}
@@ -107,6 +114,7 @@ public final class HauntModules {
                 abilities.flying = previousFlying && abilities.allowFlying;
             }
             if (module == Module.XRAY) { ORE_RESULTS.clear(); scanIndex = 0; scanOrigin = null; }
+            if (module == Module.AUTO_FISH) { autoFishHasCast = false; autoFishRecastPending = false; previousBobberVelocityY = 0.0; }
         } else {
             ENABLED.add(module);
             if (module == Module.FULLBRIGHT && client.options != null) {
@@ -140,6 +148,7 @@ public final class HauntModules {
             previousRightDown = rightDown;
             while (!CLICK_TIMES.isEmpty() && now - CLICK_TIMES.peekFirst() > 1000L) CLICK_TIMES.removeFirst();
         }
+        if (isEnabled(Module.AUTO_FISH)) tickAutoFish(client);
         if (isEnabled(Module.FOLLOW_PLAYER)) updateFollowAssist(client);
         else followTarget = null;
         if (isEnabled(Module.TRAINING_AURA)) tickTrainingAura(client);
@@ -171,6 +180,35 @@ public final class HauntModules {
         }
     }
 
+    /** Reels on the bobber's splash impulse, then casts again with the selected rod. */
+    private static void tickAutoFish(MinecraftClient client) {
+        if (client.player == null || client.world == null || client.interactionManager == null) return;
+        ItemStack held = client.player.getMainHandStack();
+        if (!held.isOf(Items.FISHING_ROD)) return;
+        long now = System.currentTimeMillis();
+        FishingBobberEntity bobber = client.player.fishHook;
+        if (bobber != null) {
+            autoFishHasCast = true;
+            double velocityY = bobber.getVelocity().y;
+            boolean biteImpulse = bobber.isTouchingWater() && previousBobberVelocityY < -0.02 && velocityY > 0.02;
+            previousBobberVelocityY = velocityY;
+            if (biteImpulse && now >= autoFishNextActionAt) {
+                client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
+                client.player.swingHand(Hand.MAIN_HAND);
+                autoFishNextActionAt = now + 650L;
+                autoFishRecastPending = true;
+            }
+            return;
+        }
+        previousBobberVelocityY = 0.0;
+        if ((!autoFishHasCast || autoFishRecastPending) && now >= autoFishNextActionAt) {
+            client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
+            client.player.swingHand(Hand.MAIN_HAND);
+            autoFishHasCast = true;
+            autoFishRecastPending = false;
+            autoFishNextActionAt = now + 900L;
+        }
+    }
     private static void updateFollowAssist(MinecraftClient client) {
         if (client.player == null || client.world == null) {
             followTarget = null;

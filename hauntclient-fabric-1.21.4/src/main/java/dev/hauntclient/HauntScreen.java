@@ -236,6 +236,16 @@ public class HauntScreen extends Screen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        // While assigning a bind, capture the next key instead of treating it as search input.
+        if (bindingModule != null) {
+            if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
+                bindingModule = null;
+                return true;
+            }
+            HauntClient.setModuleBind(bindingModule, keyCode, scanCode);
+            bindingModule = null;
+            return true;
+        }
         if (keyCode == GLFW.GLFW_KEY_BACKSPACE && !search.isEmpty()) {
             search = search.substring(0, search.length() - 1);
             return true;

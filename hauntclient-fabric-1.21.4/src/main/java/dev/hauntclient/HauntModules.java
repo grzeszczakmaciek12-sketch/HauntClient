@@ -16,6 +16,9 @@ import net.minecraft.item.Items;
 import net.minecraft.util.math.Box;
 import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.VertexConsumer;
+import net.minecraft.client.render.TextRenderer;
+import net.minecraft.client.render.LightmapTextureManager;
+import net.minecraft.text.Text;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.entity.decoration.ArmorStandEntity;
 import net.minecraft.util.Hand;
@@ -37,6 +40,7 @@ public final class HauntModules {
         TRACERS("Tracers", "Draw lines to nearby mobs and players", Category.RENDER),
         ITEM_ESP("Item ESP", "Highlight dropped items; RMB changes color", Category.RENDER),
         BLOCK_ESP("Block ESP", "Outline the block under your crosshair and draw a line to it", Category.RENDER),
+        NAMETAGS("NameTags", "Show player names and dropped item names", Category.RENDER),
         AUTO_FISH("Auto Fish", "Automatically reels in bites and casts again", Category.PLAYER),
         CPS_COUNTER("CPS Counter", "Show recent mouse clicks per second", Category.HUD),
         XRAY("X-Ray Radar", "Radar for ore blocks sent by the server", Category.RENDER),
@@ -335,6 +339,29 @@ public final class HauntModules {
             }
         }
 
+        if (isEnabled(Module.NAMETAGS) && context.consumers() != null) {
+            TextRenderer textRenderer = client.textRenderer;
+            for (PlayerEntity target : context.world().getPlayers()) {
+                if (target == client.player || !target.isAlive()
+                    || client.player.squaredDistanceTo(target) > 48.0 * 48.0) continue;
+                drawWorldLabel(context, target.getDisplayName(), target.getX(), 
+                    target.getY() + target.getHeight() + 0.35, target.getZ(),
+                    0xFFFFFFFF, textRenderer);
+            }
+            for (ItemEntity item : context.world().getEntitiesByClass(
+                ItemEntity.class,
+                client.player.getBoundingBox().expand(48.0),
+                e -> e.isAlive() && !e.getStack().isEmpty()
+            )) {
+                ItemStack stack = item.getStack();
+                Text label = stack.getName();
+                if (stack.getCount() > 1) label = Text.literal(label.getString() + " x" + stack.getCount());
+                drawWorldLabel(context, label, item.getX(),
+                    item.getY() + item.getHeight() + 0.2, item.getZ(),
+                    0xFFFFD27A, textRenderer);
+            }
+        }
+
         if (isEnabled(Module.ITEM_ESP)) {
             int color = ITEM_ESP_COLORS[itemEspColorIndex];
             for (ItemEntity item : context.world().getEntitiesByClass(
@@ -362,6 +389,22 @@ public final class HauntModules {
             lines.vertex(entry.getPositionMatrix(), (float) end.x, (float) end.y, (float) end.z)
                 .color(red, green, blue, 210).normal(entry, 0.0f, 1.0f, 0.0f);
         }
+        matrices.pop();
+    }
+
+    private static void drawWorldLabel(WorldRenderContext context, Text text,
+            double x, double y, double z, int color, TextRenderer renderer) {
+        Vec3d camera = context.camera().getPos();
+        var matrices = context.matrixStack();
+        matrices.push();
+        matrices.translate(x - camera.x, y - camera.y, z - camera.z);
+        matrices.multiply(context.camera().getRotation());
+        matrices.scale(-0.025f, -0.025f, 0.025f);
+        float centeredX = -renderer.getWidth(text) / 2.0f;
+        renderer.draw(text, centeredX, 0.0f, color, true,
+            matrices.peek().getPositionMatrix(), context.consumers(),
+            TextRenderer.TextLayerType.NORMAL, 0x80000000,
+            LightmapTextureManager.MAX_LIGHT_COORDINATE);
         matrices.pop();
     }
 

@@ -62,6 +62,12 @@ public final class HauntModules {
         }
     }
     public enum Category { COMBAT, MOVEMENT, RENDER, PLAYER, WORLD, HUD }
+    public enum TracerTarget { PLAYERS, MOBS, BOTH }
+    private static TracerTarget tracerTarget = TracerTarget.PLAYERS;
+    public static TracerTarget getTracerTarget() { return tracerTarget; }
+    public static void cycleTracerTarget() {
+        tracerTarget = TracerTarget.values()[(tracerTarget.ordinal() + 1) % TracerTarget.values().length];
+    }
     private static final Set<Module> ENABLED = EnumSet.noneOf(Module.class);
     private static final int[] ITEM_ESP_COLORS = {0xFFFF55FF, 0xFF55FFFF, 0xFFFFFF55, 0xFFFF5555, 0xFF55FF55, 0xFFFFFFFF};
     private static int itemEspColorIndex = 0;
@@ -425,14 +431,30 @@ public final class HauntModules {
         }
 
         if (isEnabled(Module.TRACERS)) {
-            for (PlayerEntity other : context.world().getPlayers()) {
-                if (other == client.player || !other.isAlive() || other.isSpectator()
-                    || client.player.squaredDistanceTo(other) > 48.0 * 48.0) continue;
-                Vec3d end = other.getPos().add(0.0, other.getHeight() * 0.5, 0.0);
-                lines.vertex(entry.getPositionMatrix(), (float) start.x, (float) start.y, (float) start.z)
-                    .color(255, 116, 70, 210).normal(entry, 0.0f, 1.0f, 0.0f);
-                lines.vertex(entry.getPositionMatrix(), (float) end.x, (float) end.y, (float) end.z)
-                    .color(255, 116, 70, 210).normal(entry, 0.0f, 1.0f, 0.0f);
+            if (tracerTarget == TracerTarget.PLAYERS || tracerTarget == TracerTarget.BOTH) {
+                for (PlayerEntity other : context.world().getPlayers()) {
+                    if (other == client.player || !other.isAlive() || other.isSpectator()
+                        || client.player.squaredDistanceTo(other) > 48.0 * 48.0) continue;
+                    Vec3d end = other.getPos().add(0.0, other.getHeight() * 0.5, 0.0);
+                    lines.vertex(entry.getPositionMatrix(), (float) start.x, (float) start.y, (float) start.z)
+                        .color(255, 116, 70, 210).normal(entry, 0.0f, 1.0f, 0.0f);
+                    lines.vertex(entry.getPositionMatrix(), (float) end.x, (float) end.y, (float) end.z)
+                        .color(255, 116, 70, 210).normal(entry, 0.0f, 1.0f, 0.0f);
+                }
+            }
+            if (tracerTarget == TracerTarget.MOBS || tracerTarget == TracerTarget.BOTH) {
+                for (LivingEntity mob : context.world().getEntitiesByClass(
+                    LivingEntity.class,
+                    client.player.getBoundingBox().expand(48.0),
+                    e -> e.isAlive() && e != client.player && !(e instanceof PlayerEntity)
+                        && !e.isSpectator()
+                )) {
+                    Vec3d end = mob.getPos().add(0.0, mob.getHeight() * 0.5, 0.0);
+                    lines.vertex(entry.getPositionMatrix(), (float) start.x, (float) start.y, (float) start.z)
+                        .color(166, 105, 220, 210).normal(entry, 0.0f, 1.0f, 0.0f);
+                    lines.vertex(entry.getPositionMatrix(), (float) end.x, (float) end.y, (float) end.z)
+                        .color(166, 105, 220, 210).normal(entry, 0.0f, 1.0f, 0.0f);
+                }
             }
         }
         matrices.pop();

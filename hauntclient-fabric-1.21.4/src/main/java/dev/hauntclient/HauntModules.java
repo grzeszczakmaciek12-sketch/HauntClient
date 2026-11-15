@@ -59,6 +59,7 @@ public final class HauntModules {
         BLOCK_INSPECTOR("Block Inspector", "Show the block currently under your crosshair", Category.WORLD),
         FOLLOW_PLAYER("Follow Assist", "Smoothly tracks the nearest player; hold W to follow", Category.PLAYER),
         AIM_ASSIST("AIM ASSIST", "Softly helps aim at nearby hostile mobs", Category.COMBAT),
+        XCARRY("XCarry", "Keep crafting-grid items when closing inventory", Category.PLAYER),
         FREECAM("Freecam", "Move the camera while your player stays still", Category.MOVEMENT),
         AUTO_TOOLS("Auto Tools", "Automatically select the best hotbar tool for the block you mine", Category.PLAYER),
         AUTO_EAT("Auto Eat", "Automatically eat from your hotbar when hunger is low", Category.PLAYER),

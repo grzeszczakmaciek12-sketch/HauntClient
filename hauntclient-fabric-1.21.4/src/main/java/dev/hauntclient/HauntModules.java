@@ -197,6 +197,8 @@ public final class HauntModules {
             freecamCamera.setInvisible(true);
             freecamCamera.setNoGravity(true);
             freecamCamera.setInvulnerable(true);
+            // Detached camera should pass through blocks and entities like a typical client freecam.
+            freecamCamera.noClip = true;
             client.world.addEntity(freecamCamera);
             client.setCameraEntity(freecamCamera);
         }

@@ -134,15 +134,6 @@ public class HauntScreen extends Screen {
                 enabled ? bx + 31 : bx + 15, top + 35, WHITE);
             ctx.drawText(textRenderer, (bindingModule == module ? "PRESS KEY..." : "BIND: " + HauntClient.getModuleBindName(module)),
                 left + 12, top + 43, bindingModule == module ? GOLD : 0xFF9D8BAD, false);
-            if (module == HauntModules.Module.XRAY)
-                ctx.drawText(textRenderer, "RMB: BLOCKS " + HauntModules.getXrayBlockCount(),
-                    left + 12, top + 44, GOLD, false);
-            if (module == HauntModules.Module.ITEM_ESP)
-                ctx.drawText(textRenderer, "RMB: COLOR " + HauntModules.getItemEspColorName(),
-                    left + 12, top + 44, GOLD, false);
-            if (module == HauntModules.Module.TRACERS)
-                ctx.drawText(textRenderer, "RMB: TARGET " + HauntModules.getTracerTarget().name(),
-                    left + 12, top + 44, GOLD, false);
         }
 
         if (modules.isEmpty())

@@ -17,6 +17,8 @@ public class HauntClient implements ClientModInitializer {
         KeyBinding binding = MODULE_BINDS.get(module);
         if (binding != null) {
             binding.setBoundKey(InputUtil.fromKeyCode(keyCode, scanCode));
+            // Rebuild Minecraft's key-to-binding lookup after changing a bind at runtime.
+            KeyBinding.updateKeysByCode();
             MinecraftClientAccess.saveOptions();
         }
     }

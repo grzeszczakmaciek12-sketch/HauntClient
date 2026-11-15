@@ -89,7 +89,7 @@ public class HauntScreen extends Screen {
             if (active) ctx.fill(x + 10, top + 3, x + 12, top + 17, ORANGE);
             ctx.drawText(textRenderer, category.name(), x + 22, top + 7,
                 active ? WHITE : MUTED, active);
-            catY += 30;
+            catY += 25;
         }
 
         int mainX = x + side + 14;

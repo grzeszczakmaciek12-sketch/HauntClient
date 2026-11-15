@@ -85,7 +85,7 @@ public final class HauntModules {
     private static BlockPos scanOrigin;
     private static PlayerEntity followTarget;
     private static long lastFollowRenderNanos;
-    private static double previousBobberY;
+    private static double previousBobberY = Double.NaN;
     private static long autoFishNextActionAt;
     private static boolean autoFishHasCast;
     private static boolean autoFishRecastPending;
@@ -119,7 +119,7 @@ public final class HauntModules {
                 abilities.flying = previousFlying && abilities.allowFlying;
             }
             if (module == Module.XRAY) { ORE_RESULTS.clear(); scanIndex = 0; scanOrigin = null; }
-            if (module == Module.AUTO_FISH) { autoFishHasCast = false; autoFishRecastPending = false; previousBobberY = 0.0; }
+            if (module == Module.AUTO_FISH) { autoFishHasCast = false; autoFishRecastPending = false; previousBobberY = Double.NaN; }
         } else {
             ENABLED.add(module);
             if (module == Module.FULLBRIGHT && client.options != null) {
@@ -200,7 +200,7 @@ public final class HauntModules {
             double bobberY = bobber.getY();
             double velocityY = bobber.getVelocity().y;
             boolean bobberSinking = bobber.isTouchingWater()
-                && previousBobberY > 0.0
+                && !Double.isNaN(previousBobberY)
                 && bobberY < previousBobberY - 0.035
                 && velocityY < -0.025;
             previousBobberY = bobberY;

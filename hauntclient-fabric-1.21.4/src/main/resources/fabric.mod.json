@@ -4,9 +4,23 @@
   "version": "${version}",
   "name": "HAUNT CLIENT V3",
   "description": "A modular purple client-side utility and training mod for Fabric 1.21.4.",
-  "authors": ["HauntClient"],
+  "authors": [
+    "HauntClient"
+  ],
   "license": "MIT",
   "environment": "client",
-  "entrypoints": { "client": ["dev.hauntclient.HauntClient"] },
-  "depends": { "fabricloader": ">=0.16.0", "minecraft": "~1.21.4", "java": ">=21", "fabric-api": "*" }
+  "entrypoints": {
+    "client": [
+      "dev.hauntclient.HauntClient"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "~1.21.4",
+    "java": ">=21",
+    "fabric-api": "*"
+  },
+  "mixins": [
+    "hauntclient.mixins.json"
+  ]
 }

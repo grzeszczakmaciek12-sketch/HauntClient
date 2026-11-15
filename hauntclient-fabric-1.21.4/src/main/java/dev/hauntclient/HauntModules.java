@@ -5,6 +5,9 @@ import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.FoodComponent;
+import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
@@ -58,7 +61,9 @@ public final class HauntModules {
         BLOCK_INSPECTOR("Block Inspector", "Show the block currently under your crosshair", Category.WORLD),
         FOLLOW_PLAYER("Follow Assist", "Smoothly tracks the nearest player; hold W to follow", Category.PLAYER),
         AIM_ASSIST("Aim Assist", "Softly helps aim at nearby hostile mobs", Category.COMBAT),
-        FREECAM("Freecam", "Move the camera while your player stays still", Category.MOVEMENT);
+        FREECAM("Freecam", "Move the camera while your player stays still", Category.MOVEMENT),
+        AUTO_TOOLS("Auto Tools", "Automatically select the best hotbar tool for the block you mine", Category.PLAYER),
+        AUTO_EAT("Auto Eat", "Automatically eat from your hotbar when hunger is low", Category.PLAYER);
 
         public final String title, description;
         public final Category category;
@@ -96,6 +101,9 @@ public final class HauntModules {
     private static BlockPos scanOrigin;
     private static PlayerEntity followTarget;
     private static ArmorStandEntity freecamCamera;
+    private static boolean autoEatUsing;
+    private static int autoEatPreviousSlot = -1;
+    private static int autoEatFoodSlot = -1;
     private static Vec3d freecamAnchor;
     private static long lastFollowRenderNanos;
     private static double previousBobberY = Double.NaN;
@@ -134,6 +142,7 @@ public final class HauntModules {
             if (module == Module.XRAY) { ORE_RESULTS.clear(); scanIndex = 0; scanOrigin = null; }
             if (module == Module.AUTO_FISH) { autoFishHasCast = false; autoFishRecastPending = false; previousBobberY = Double.NaN; }
             if (module == Module.FREECAM) stopFreecam(client);
+            if (module == Module.AUTO_EAT) stopAutoEat(client);
         } else {
             ENABLED.add(module);
             if (module == Module.FULLBRIGHT && client.options != null) {
@@ -153,6 +162,9 @@ public final class HauntModules {
 
     public static void tick(MinecraftClient client) {
         if (isEnabled(Module.FREECAM)) tickFreecam(client);
+        if (isEnabled(Module.AUTO_TOOLS)) tickAutoTools(client);
+        if (isEnabled(Module.AUTO_EAT)) tickAutoEat(client);
+        else if (autoEatUsing) stopAutoEat(client);
         if (isEnabled(Module.FLY) && client.player != null && !client.player.getAbilities().allowFlying) {
             ENABLED.remove(Module.FLY);
             client.player.sendMessage(net.minecraft.text.Text.literal("§cSerwer odebrał uprawnienie do latania."), true);
@@ -176,6 +188,92 @@ public final class HauntModules {
         if (isEnabled(Module.XRAY) && client.player != null && client.world != null) {
             scanNearbyOresIncrementally(client);
         }
+    }
+
+    /** Selects the fastest suitable tool from the hotbar while the player is mining a block. */
+    private static void tickAutoTools(MinecraftClient client) {
+        if (client.player == null || client.world == null || client.currentScreen != null
+            || !client.options.attackKey.isPressed()
+            || !(client.crosshairTarget instanceof BlockHitResult hit)) return;
+
+        var state = client.world.getBlockState(hit.getBlockPos());
+        if (state.isAir() || state.getHardness(client.world, hit.getBlockPos()) < 0.0f) return;
+
+        int currentSlot = client.player.getInventory().selectedSlot;
+        ItemStack current = client.player.getInventory().getStack(currentSlot);
+        float currentSpeed = current.getMiningSpeedMultiplier(state);
+        boolean currentSuitable = current.isSuitableFor(state);
+        int bestSlot = currentSlot;
+        float bestSpeed = currentSpeed;
+        boolean bestSuitable = currentSuitable;
+
+        for (int slot = 0; slot < 9; slot++) {
+            ItemStack stack = client.player.getInventory().getStack(slot);
+            if (stack.isEmpty()) continue;
+            float speed = stack.getMiningSpeedMultiplier(state);
+            boolean suitable = stack.isSuitableFor(state);
+            if ((suitable && !bestSuitable)
+                || (suitable == bestSuitable && speed > bestSpeed + 0.01f)) {
+                bestSlot = slot;
+                bestSpeed = speed;
+                bestSuitable = suitable;
+            }
+        }
+        if (bestSlot != currentSlot) client.player.getInventory().selectedSlot = bestSlot;
+    }
+
+    /** Eats the best available hotbar food when hunger drops to 16 or less. */
+    private static void tickAutoEat(MinecraftClient client) {
+        if (client.player == null || client.options == null || client.currentScreen != null) {
+            if (autoEatUsing) stopAutoEat(client);
+            return;
+        }
+
+        var player = client.player;
+        if (autoEatUsing) {
+            ItemStack activeFood = player.getInventory().getStack(autoEatFoodSlot);
+            if (player.getHungerManager().getFoodLevel() >= 20
+                || activeFood.isEmpty()
+                || activeFood.get(DataComponentTypes.FOOD) == null
+                || player.getInventory().selectedSlot != autoEatFoodSlot) {
+                stopAutoEat(client);
+                return;
+            }
+            client.options.useKey.setPressed(true);
+            return;
+        }
+
+        if (player.getHungerManager().getFoodLevel() > 16 || player.isUsingItem()) return;
+
+        int bestSlot = -1;
+        int bestNutrition = -1;
+        for (int slot = 0; slot < 9; slot++) {
+            ItemStack stack = player.getInventory().getStack(slot);
+            FoodComponent food = stack.get(DataComponentTypes.FOOD);
+            if (food != null && food.nutrition() > bestNutrition) {
+                bestNutrition = food.nutrition();
+                bestSlot = slot;
+            }
+        }
+        if (bestSlot < 0) return;
+
+        autoEatPreviousSlot = player.getInventory().selectedSlot;
+        autoEatFoodSlot = bestSlot;
+        player.getInventory().selectedSlot = bestSlot;
+        autoEatUsing = true;
+        client.options.useKey.setPressed(true);
+    }
+
+    private static void stopAutoEat(MinecraftClient client) {
+        if (client.options != null) client.options.useKey.setPressed(false);
+        if (client.player != null && autoEatPreviousSlot >= 0
+            && autoEatFoodSlot >= 0
+            && client.player.getInventory().selectedSlot == autoEatFoodSlot) {
+            client.player.getInventory().selectedSlot = autoEatPreviousSlot;
+        }
+        autoEatUsing = false;
+        autoEatPreviousSlot = -1;
+        autoEatFoodSlot = -1;
     }
 
     /** Starts a detached client-side camera; the real player is held at the starting position. */

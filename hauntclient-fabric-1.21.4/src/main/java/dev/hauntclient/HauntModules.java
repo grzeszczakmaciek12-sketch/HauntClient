@@ -40,7 +40,7 @@ public final class HauntModules {
         TRACERS("Tracers", "Draw lines to nearby mobs and players", Category.RENDER),
         ITEM_ESP("Item ESP", "Highlight dropped items; RMB changes color", Category.RENDER),
         BLOCK_ESP("Block ESP", "Outline the block under your crosshair and draw a line to it", Category.RENDER),
-        NAMETAGS("NameTags", "Show player names and dropped item names", Category.RENDER),
+        NAMETAGS("Item Labels", "Show names and stack counts for dropped items only", Category.RENDER),
         AUTO_FISH("Auto Fish", "Automatically reels in bites and casts again", Category.PLAYER),
         CPS_COUNTER("CPS Counter", "Show recent mouse clicks per second", Category.HUD),
         XRAY("X-Ray Radar", "Radar for ore blocks sent by the server", Category.RENDER),
@@ -311,8 +311,10 @@ public final class HauntModules {
 
     /** World-space visual lines to nearby living entities; does not interact with targets. */
     private static void renderTracers(WorldRenderContext context) {
-        if (!isEnabled(Module.TRACERS) || context.world() == null
-            || context.matrixStack() == null || context.consumers() == null) return;
+        if ((!isEnabled(Module.TRACERS) && !isEnabled(Module.BLOCK_ESP)
+            && !isEnabled(Module.ITEM_ESP) && !isEnabled(Module.NAMETAGS))
+            || context.world() == null || context.matrixStack() == null
+            || context.consumers() == null) return;
 
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player == null) return;
@@ -339,15 +341,8 @@ public final class HauntModules {
             }
         }
 
-        if (isEnabled(Module.NAMETAGS) && context.consumers() != null) {
+        if (isEnabled(Module.NAMETAGS)) {
             TextRenderer textRenderer = client.textRenderer;
-            for (PlayerEntity target : context.world().getPlayers()) {
-                if (target == client.player || !target.isAlive()
-                    || client.player.squaredDistanceTo(target) > 48.0 * 48.0) continue;
-                drawWorldLabel(context, target.getDisplayName(), target.getX(), 
-                    target.getY() + target.getHeight() + 0.35, target.getZ(),
-                    0xFFFFFFFF, textRenderer);
-            }
             for (ItemEntity item : context.world().getEntitiesByClass(
                 ItemEntity.class,
                 client.player.getBoundingBox().expand(48.0),

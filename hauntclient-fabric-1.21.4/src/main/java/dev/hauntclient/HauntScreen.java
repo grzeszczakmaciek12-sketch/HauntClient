@@ -83,13 +83,13 @@ public class HauntScreen extends Screen {
             boolean active = category == selected;
             int top = catY;
             boolean hover = mouseX >= x + 10 && mouseX <= x + side - 10
-                && mouseY >= top && mouseY <= top + 31;
-            ctx.fill(x + 10, top, x + side - 10, top + 31,
+                && mouseY >= top && mouseY <= top + 25;
+            ctx.fill(x + 10, top, x + side - 10, top + 25,
                 active ? 0xFF57334F : (hover ? CARD_HOVER : 0xFF211B30));
-            if (active) ctx.fill(x + 10, top + 5, x + 13, top + 26, ORANGE);
-            ctx.drawText(textRenderer, category.name(), x + 22, top + 10,
+            if (active) ctx.fill(x + 10, top + 4, x + 13, top + 21, ORANGE);
+            ctx.drawText(textRenderer, category.name(), x + 22, top + 7,
                 active ? WHITE : MUTED, active);
-            catY += 37;
+            catY += 30;
         }
 
         int mainX = x + side + 18;
@@ -169,7 +169,7 @@ public class HauntScreen extends Screen {
             int catY = y + 103;
             for (HauntModules.Category category : HauntModules.Category.values()) {
                 if (mx >= x + 10 && mx <= x + side - 10
-                    && my >= catY && my <= catY + 31) {
+                    && my >= catY && my <= catY + 25) {
                     selected = category;
                     scrollOffset = 0;
                     return true;

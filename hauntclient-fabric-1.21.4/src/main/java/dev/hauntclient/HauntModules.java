@@ -60,8 +60,7 @@ public final class HauntModules {
         JESUS("Jesus", "Keeps the player buoyant at the water surface", Category.MOVEMENT),
         FLY("Fly", "Flight only when the server grants flight permission", Category.MOVEMENT),
         BLOCK_INSPECTOR("Block Inspector", "Show the block currently under your crosshair", Category.WORLD),
-        FOLLOW_PLAYER("Follow Assist", "Smoothly tracks the nearest player; hold W to follow", Category.PLAYER),
-        AIM_ASSIST("AIM ASSIST", "Softly helps aim at nearby hostile mobs", Category.COMBAT),
+        AIM_ASSIST("Aim Assist", "Smoothly tracks nearby hostile mobs; no player targeting or attacks", Category.COMBAT),
         XCARRY("XCarry", "Keep crafting-grid items when closing inventory", Category.PLAYER),
         FREECAM("Freecam", "Move the camera while your player stays still", Category.MOVEMENT),
         AUTO_TOOLS("Auto Tools", "Automatically select the best hotbar tool for the block you mine", Category.PLAYER),
@@ -103,7 +102,7 @@ public final class HauntModules {
     private static boolean previousFlying;
     private static int scanIndex;
     private static BlockPos scanOrigin;
-    private static PlayerEntity followTarget;
+    private static HostileEntity followTarget;
     private static ArmorStandEntity freecamCamera;
     private static boolean autoEatUsing;
     private static int autoEatPreviousSlot = -1;
@@ -197,9 +196,8 @@ public final class HauntModules {
             while (!CLICK_TIMES.isEmpty() && now - CLICK_TIMES.peekFirst() > 1000L) CLICK_TIMES.removeFirst();
         }
         if (isEnabled(Module.AUTO_FISH)) tickAutoFish(client);
-        if (isEnabled(Module.FOLLOW_PLAYER)) updateFollowAssist(client);
+        if (isEnabled(Module.AIM_ASSIST)) updateFollowAssist(client);
         else followTarget = null;
-        if (isEnabled(Module.AIM_ASSIST)) tickAimAssist(client);
         if (isEnabled(Module.XRAY) && client.player != null && client.world != null) {
             scanNearbyOresIncrementally(client);
         }
@@ -529,10 +527,11 @@ public final class HauntModules {
             return;
         }
 
-        PlayerEntity nearest = null;
+        HostileEntity nearest = null;
         double bestDistance = 32.0 * 32.0;
-        for (PlayerEntity candidate : client.world.getPlayers()) {
-            if (candidate == client.player || candidate.isSpectator() || !candidate.isAlive()) continue;
+        for (HostileEntity candidate : client.world.getEntitiesByClass(
+            HostileEntity.class, client.player.getBoundingBox().expand(32.0),
+            entity -> entity.isAlive() && !entity.isSpectator() && client.player.canSee(entity))) {
             double distance = client.player.squaredDistanceTo(candidate);
             if (distance < bestDistance) {
                 bestDistance = distance;
@@ -550,7 +549,7 @@ public final class HauntModules {
      */
     public static void renderFollowAssist() {
         MinecraftClient client = MinecraftClient.getInstance();
-        if (!isEnabled(Module.FOLLOW_PLAYER) || client.player == null
+        if (!isEnabled(Module.AIM_ASSIST) || client.player == null
             || client.world == null || followTarget == null || !followTarget.isAlive()) return;
 
         var from = client.player.getEyePos();
@@ -780,11 +779,11 @@ public final class HauntModules {
             String id = net.minecraft.registry.Registries.BLOCK.getId(state.getBlock()).toString();
             drawLine(context, "BLOCK: " + id, x, y); y += 12;
         }
-        if (isEnabled(Module.FOLLOW_PLAYER)) {
+                if (isEnabled(Module.AIM_ASSIST)) {
             if (followTarget != null) {
-                drawLine(context, "FOLLOW: " + followTarget.getName().getString() + "  " + String.format(java.util.Locale.ROOT, "%.1fm", client.player.distanceTo(followTarget)), x, y);
+                drawLine(context, "AIM ASSIST: " + followTarget.getName().getString() + "  " + String.format(java.util.Locale.ROOT, "%.1fm", client.player.distanceTo(followTarget)), x, y);
             } else {
-                drawLine(context, "FOLLOW: waiting for a nearby player", x, y);
+                drawLine(context, "AIM ASSIST: waiting for a hostile mob", x, y);
             }
             y += 12;
         }

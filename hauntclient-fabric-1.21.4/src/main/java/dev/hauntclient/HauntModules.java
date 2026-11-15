@@ -63,7 +63,8 @@ public final class HauntModules {
         AIM_ASSIST("Aim Assist", "Softly helps aim at nearby hostile mobs", Category.COMBAT),
         FREECAM("Freecam", "Move the camera while your player stays still", Category.MOVEMENT),
         AUTO_TOOLS("Auto Tools", "Automatically select the best hotbar tool for the block you mine", Category.PLAYER),
-        AUTO_EAT("Auto Eat", "Automatically eat from your hotbar when hunger is low", Category.PLAYER);
+        AUTO_EAT("Auto Eat", "Automatically eat from your hotbar when hunger is low", Category.PLAYER),
+        FREELOOK("Freelook", "Look around without rotating your player", Category.RENDER);
 
         public final String title, description;
         public final Category category;
@@ -143,8 +144,10 @@ public final class HauntModules {
             if (module == Module.AUTO_FISH) { autoFishHasCast = false; autoFishRecastPending = false; previousBobberY = Double.NaN; }
             if (module == Module.FREECAM) stopFreecam(client);
             if (module == Module.AUTO_EAT) stopAutoEat(client);
+            if (module == Module.FREELOOK) Freelook.stop(client);
         } else {
             ENABLED.add(module);
+            if (module == Module.FREELOOK) Freelook.start(client);
             if (module == Module.FULLBRIGHT && client.options != null) {
                 previousGamma = client.options.getGamma().getValue();
                 gammaCaptured = true;
@@ -162,6 +165,7 @@ public final class HauntModules {
 
     public static void tick(MinecraftClient client) {
         if (isEnabled(Module.FREECAM)) tickFreecam(client);
+        if (isEnabled(Module.FREELOOK)) Freelook.tick(client);
         if (isEnabled(Module.AUTO_TOOLS)) tickAutoTools(client);
         if (isEnabled(Module.AUTO_EAT)) tickAutoEat(client);
         else if (autoEatUsing) stopAutoEat(client);

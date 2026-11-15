@@ -36,6 +36,7 @@ public final class HauntModules {
         CUSTOM_CROSSHAIR("Custom Crosshair", "Draw a clean purple custom reticle", Category.HUD),
         TRACERS("Tracers", "Draw lines to nearby mobs and players", Category.RENDER),
         ITEM_ESP("Item ESP", "Highlight dropped items; RMB changes color", Category.RENDER),
+        BLOCK_ESP("Block ESP", "Outline the block under your crosshair and draw a line to it", Category.RENDER),
         AUTO_FISH("Auto Fish", "Automatically reels in bites and casts again", Category.PLAYER),
         CPS_COUNTER("CPS Counter", "Show recent mouse clicks per second", Category.HUD),
         XRAY("X-Ray Radar", "Radar for ore blocks sent by the server", Category.RENDER),
@@ -319,6 +320,20 @@ public final class HauntModules {
         matrices.translate(-camera.x, -camera.y, -camera.z);
         var entry = matrices.peek();
         VertexConsumer lines = context.consumers().getBuffer(RenderLayer.getLines());
+
+        if (isEnabled(Module.BLOCK_ESP)
+            && client.crosshairTarget instanceof net.minecraft.util.hit.BlockHitResult blockHit) {
+            BlockPos targetPos = blockHit.getBlockPos();
+            if (!context.world().getBlockState(targetPos).isAir()) {
+                Box blockBox = new Box(targetPos).offset(-camera.x, -camera.y, -camera.z);
+                drawBoxLines(lines, entry, blockBox, 0xFF55FFFF);
+                Vec3d blockCenter = Vec3d.ofCenter(targetPos);
+                lines.vertex(entry.getPositionMatrix(), (float) start.x, (float) start.y, (float) start.z)
+                    .color(85, 255, 255, 230).normal(entry, 0.0f, 1.0f, 0.0f);
+                lines.vertex(entry.getPositionMatrix(), (float) blockCenter.x, (float) blockCenter.y, (float) blockCenter.z)
+                    .color(85, 255, 255, 230).normal(entry, 0.0f, 1.0f, 0.0f);
+            }
+        }
 
         if (isEnabled(Module.ITEM_ESP)) {
             int color = ITEM_ESP_COLORS[itemEspColorIndex];

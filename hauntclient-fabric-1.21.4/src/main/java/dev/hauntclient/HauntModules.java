@@ -21,6 +21,7 @@ import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.entity.decoration.ArmorStandEntity;
+import net.minecraft.entity.EntityType;
 import net.minecraft.entity.mob.HostileEntity;
 import net.minecraft.util.Hand;
 import org.lwjgl.glfw.GLFW;
@@ -55,7 +56,8 @@ public final class HauntModules {
         TRAINING_AURA("Training Aura", "Automatically hits armor-stand training dummies only", Category.COMBAT),
         BLOCK_INSPECTOR("Block Inspector", "Show the block currently under your crosshair", Category.WORLD),
         FOLLOW_PLAYER("Follow Assist", "Smoothly tracks the nearest player; hold W to follow", Category.PLAYER),
-        AIM_ASSIST("Aim Assist", "Softly helps aim at nearby hostile mobs", Category.COMBAT);
+        AIM_ASSIST("Aim Assist", "Softly helps aim at nearby hostile mobs", Category.COMBAT),
+        FREECAM("Freecam", "Move the camera while your player stays still", Category.MOVEMENT);
 
         public final String title, description;
         public final Category category;
@@ -92,6 +94,8 @@ public final class HauntModules {
     private static int scanIndex;
     private static BlockPos scanOrigin;
     private static PlayerEntity followTarget;
+    private static ArmorStandEntity freecamCamera;
+    private static Vec3d freecamAnchor;
     private static long lastFollowRenderNanos;
     private static double previousBobberY = Double.NaN;
     private static long autoFishNextActionAt;
@@ -128,6 +132,7 @@ public final class HauntModules {
             }
             if (module == Module.XRAY) { ORE_RESULTS.clear(); scanIndex = 0; scanOrigin = null; }
             if (module == Module.AUTO_FISH) { autoFishHasCast = false; autoFishRecastPending = false; previousBobberY = Double.NaN; }
+            if (module == Module.FREECAM) stopFreecam(client);
         } else {
             ENABLED.add(module);
             if (module == Module.FULLBRIGHT && client.options != null) {
@@ -146,6 +151,7 @@ public final class HauntModules {
     }
 
     public static void tick(MinecraftClient client) {
+        if (isEnabled(Module.FREECAM)) tickFreecam(client);
         if (isEnabled(Module.FLY) && client.player != null && !client.player.getAbilities().allowFlying) {
             ENABLED.remove(Module.FLY);
             client.player.sendMessage(net.minecraft.text.Text.literal("§cSerwer odebrał uprawnienie do latania."), true);
@@ -169,6 +175,71 @@ public final class HauntModules {
         if (isEnabled(Module.XRAY) && client.player != null && client.world != null) {
             scanNearbyOresIncrementally(client);
         }
+    }
+
+    /** Starts a detached client-side camera; the real player is held at the starting position. */
+    private static void tickFreecam(MinecraftClient client) {
+        if (client.player == null || client.world == null) {
+            if (freecamCamera != null) stopFreecam(client);
+            return;
+        }
+        PlayerEntity player = client.player;
+        if (freecamCamera == null) {
+            freecamAnchor = player.getPos();
+            freecamCamera = EntityType.ARMOR_STAND.create(client.world);
+            if (freecamCamera == null) {
+                ENABLED.remove(Module.FREECAM);
+                return;
+            }
+            freecamCamera.refreshPositionAndAngles(player.getX(), player.getY(), player.getZ(),
+                player.getYaw(), player.getPitch());
+            freecamCamera.setInvisible(true);
+            freecamCamera.setNoGravity(true);
+            freecamCamera.setInvulnerable(true);
+            client.world.addEntity(-13371337, freecamCamera);
+            client.setCameraEntity(freecamCamera);
+        }
+
+        // Keep the actual player stationary while the detached camera is moved locally.
+        player.setPosition(freecamAnchor);
+        player.setVelocity(Vec3d.ZERO);
+        player.fallDistance = 0;
+
+        float yaw = freecamCamera.getYaw();
+        double forward = (client.options.forwardKey.isPressed() ? 1.0 : 0.0)
+            - (client.options.backKey.isPressed() ? 1.0 : 0.0);
+        double strafe = (client.options.leftKey.isPressed() ? 1.0 : 0.0)
+            - (client.options.rightKey.isPressed() ? 1.0 : 0.0);
+        double vertical = (client.options.jumpKey.isPressed() ? 1.0 : 0.0)
+            - (client.options.sneakKey.isPressed() ? 1.0 : 0.0);
+        double length = Math.sqrt(forward * forward + strafe * strafe);
+        if (length > 0.0) {
+            forward /= length;
+            strafe /= length;
+        }
+        double speed = client.options.sprintKey.isPressed() ? 0.9 : 0.35;
+        double radians = Math.toRadians(yaw);
+        double dx = (-Math.sin(radians) * forward + Math.cos(radians) * strafe) * speed;
+        double dz = ( Math.cos(radians) * forward + Math.sin(radians) * strafe) * speed;
+        freecamCamera.setPosition(freecamCamera.getX() + dx,
+            freecamCamera.getY() + vertical * speed,
+            freecamCamera.getZ() + dz);
+    }
+
+    private static void stopFreecam(MinecraftClient client) {
+        if (freecamCamera != null) {
+            if (client.getCameraEntity() == freecamCamera && client.player != null)
+                client.setCameraEntity(client.player);
+            if (client.world != null)
+                client.world.removeEntity(freecamCamera.getId(), net.minecraft.entity.Entity.RemovalReason.DISCARDED);
+            freecamCamera = null;
+        }
+        if (client.player != null && freecamAnchor != null) {
+            client.player.setPosition(freecamAnchor);
+            client.player.setVelocity(Vec3d.ZERO);
+            client.player.fallDistance = 0;
+        }
+        freecamAnchor = null;
     }
 
     /** Gentle PvE aim help: hostile mobs only; never targets players or attacks. */

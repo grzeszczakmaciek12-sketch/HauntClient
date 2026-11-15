@@ -132,8 +132,18 @@ public class HauntScreen extends Screen {
             ctx.fill(bx, top + 19, bx + 34, top + 37, enabled ? 0xFFB65D37 : 0xFF51465A);
             ctx.fill(enabled ? bx + 19 : bx + 3, top + 21,
                 enabled ? bx + 31 : bx + 15, top + 35, WHITE);
-            ctx.drawText(textRenderer, (bindingModule == module ? "PRESS KEY..." : "BIND: " + HauntClient.getModuleBindName(module)),
-                left + 12, top + 43, bindingModule == module ? GOLD : 0xFF9D8BAD, false);
+            // Compact clickable bind field, similar to the keybind capture UI in client menus.
+            int bindLeft = left + 10;
+            int bindRight = right - 10;
+            ctx.fill(bindLeft, top + 40, bindRight, top + 55,
+                bindingModule == module ? 0xFF57334F : 0xFF15111F);
+            ctx.fill(bindLeft, top + 40, bindLeft + 2, top + 55,
+                bindingModule == module ? GOLD : 0xFF6C587D);
+            String bindLabel = bindingModule == module
+                ? "LISTENING... PRESS A KEY"
+                : "BIND  [" + HauntClient.getModuleBindName(module) + "]";
+            ctx.drawText(textRenderer, bindLabel, bindLeft + 7, top + 44,
+                bindingModule == module ? GOLD : 0xFFB7A9C8, false);
         }
 
         if (modules.isEmpty())
@@ -143,7 +153,7 @@ public class HauntScreen extends Screen {
 
         ctx.fill(x + 1, y + h - 29, x + w - 1, y + h - 1, 0xFF171323);
         drawPumpkin(ctx, x + 14, y + h - 23, 2);
-        ctx.drawText(textRenderer, "LMB: TOGGLE  •  MMB: SET BIND  •  P / ESC: CLOSE",
+        ctx.drawText(textRenderer, "LMB: TOGGLE  •  CLICK BIND FIELD: SET KEY  •  ESC: CLOSE",
             x + 37, y + h - 19, MUTED, false);
         ctx.drawText(textRenderer, "A LITTLE MAGIC. A LOT OF ATMOSPHERE.",
             x + w - 204, y + h - 19, 0xFFB77A58, false);
@@ -184,7 +194,11 @@ public class HauntScreen extends Screen {
             int top = (int)(y + 157 + row * 67 - scrollOffset);
             if (my >= listTop && my <= listBottom
                 && mx >= left && mx <= left + cardW && my >= top && my <= top + 58) {
-                if (button == 2) { bindingModule = modules.get(i); return true; }
+                // Clicking the bind strip starts capture; clicking the card body toggles.
+                if (button == 2 || (button == 0 && my >= top + 39 && my <= top + 57)) {
+                    bindingModule = modules.get(i);
+                    return true;
+                }
                 if (button == 1 && modules.get(i) == HauntModules.Module.XRAY) {
                     client.setScreen(new XrayBlockScreen(this));
                     return true;

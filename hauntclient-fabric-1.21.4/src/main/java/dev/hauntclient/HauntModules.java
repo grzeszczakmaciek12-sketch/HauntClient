@@ -22,6 +22,7 @@ import net.minecraft.text.Text;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.entity.decoration.ArmorStandEntity;
 import net.minecraft.entity.EntityType;
+import net.minecraft.entity.SpawnReason;
 import net.minecraft.entity.mob.HostileEntity;
 import net.minecraft.util.Hand;
 import org.lwjgl.glfw.GLFW;
@@ -186,7 +187,7 @@ public final class HauntModules {
         PlayerEntity player = client.player;
         if (freecamCamera == null) {
             freecamAnchor = player.getPos();
-            freecamCamera = EntityType.ARMOR_STAND.create(client.world);
+            freecamCamera = EntityType.ARMOR_STAND.create(client.world, SpawnReason.TRIGGERED);
             if (freecamCamera == null) {
                 ENABLED.remove(Module.FREECAM);
                 return;
@@ -196,7 +197,7 @@ public final class HauntModules {
             freecamCamera.setInvisible(true);
             freecamCamera.setNoGravity(true);
             freecamCamera.setInvulnerable(true);
-            client.world.addEntity(-13371337, freecamCamera);
+            client.world.addEntity(freecamCamera);
             client.setCameraEntity(freecamCamera);
         }
 

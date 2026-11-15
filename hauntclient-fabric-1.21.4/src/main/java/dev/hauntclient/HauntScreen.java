@@ -22,6 +22,7 @@ public class HauntScreen extends Screen {
     private HauntModules.Category selected = HauntModules.Category.HUD;
     private String search = "";
     private double scrollOffset = 0;
+    private HauntModules.Module bindingModule = null;
 
     public HauntScreen() { super(Text.literal("HAUNT CLIENT V3")); }
 
@@ -131,6 +132,8 @@ public class HauntScreen extends Screen {
             ctx.fill(bx, top + 19, bx + 34, top + 37, enabled ? 0xFFB65D37 : 0xFF51465A);
             ctx.fill(enabled ? bx + 19 : bx + 3, top + 21,
                 enabled ? bx + 31 : bx + 15, top + 35, WHITE);
+            ctx.drawText(textRenderer, (bindingModule == module ? "PRESS KEY..." : "BIND: " + HauntClient.getModuleBindName(module)),
+                left + 12, top + 43, bindingModule == module ? GOLD : 0xFF9D8BAD, false);
             if (module == HauntModules.Module.XRAY)
                 ctx.drawText(textRenderer, "RMB: BLOCKS " + HauntModules.getXrayBlockCount(),
                     left + 12, top + 44, GOLD, false);
@@ -149,7 +152,7 @@ public class HauntScreen extends Screen {
 
         ctx.fill(x + 1, y + h - 29, x + w - 1, y + h - 1, 0xFF171323);
         drawPumpkin(ctx, x + 14, y + h - 23, 2);
-        ctx.drawText(textRenderer, "LMB: TOGGLE   •   RMB X-RAY: CONFIG   •   P / ESC: CLOSE",
+        ctx.drawText(textRenderer, "LMB: TOGGLE  •  MMB: SET BIND  •  P / ESC: CLOSE",
             x + 37, y + h - 19, MUTED, false);
         ctx.drawText(textRenderer, "A LITTLE MAGIC. A LOT OF ATMOSPHERE.",
             x + w - 204, y + h - 19, 0xFFB77A58, false);
@@ -190,6 +193,7 @@ public class HauntScreen extends Screen {
             int top = (int)(y + 157 + row * 67 - scrollOffset);
             if (my >= listTop && my <= listBottom
                 && mx >= left && mx <= left + cardW && my >= top && my <= top + 58) {
+                if (button == 2) { bindingModule = modules.get(i); return true; }
                 if (button == 1 && modules.get(i) == HauntModules.Module.XRAY) {
                     client.setScreen(new XrayBlockScreen(this));
                     return true;

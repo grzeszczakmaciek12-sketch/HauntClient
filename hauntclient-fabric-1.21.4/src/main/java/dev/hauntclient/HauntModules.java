@@ -16,6 +16,7 @@ import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.ItemEntity;
 import net.minecraft.entity.projectile.FishingBobberEntity;
 import net.minecraft.item.Items;
+import net.minecraft.screen.slot.SlotActionType;
 import net.minecraft.util.math.Box;
 import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.VertexConsumer;
@@ -65,6 +66,7 @@ public final class HauntModules {
         FREECAM("Freecam", "Move the camera while your player stays still", Category.MOVEMENT),
         AUTO_TOOLS("Auto Tools", "Automatically select the best hotbar tool for the block you mine", Category.PLAYER),
         AUTO_EAT("Auto Eat", "Automatically eat from your hotbar when hunger is low", Category.PLAYER),
+        AUTO_TOTEM("Auto Totem", "Moves a totem from inventory into the offhand", Category.PLAYER),
         FREELOOK("Freelook", "Look around without rotating your player", Category.RENDER);
 
         public final String title, description;
@@ -176,6 +178,7 @@ public final class HauntModules {
         if (isEnabled(Module.FREECAM)) tickFreecam(client);
         if (isEnabled(Module.FREELOOK)) Freelook.tick(client);
         if (isEnabled(Module.AUTO_TOOLS)) tickAutoTools(client);
+        if (isEnabled(Module.AUTO_TOTEM)) tickAutoTotem(client);
         if (isEnabled(Module.AUTO_EAT)) tickAutoEat(client);
         else if (autoEatUsing) stopAutoEat(client);
         if (isEnabled(Module.FLY) && client.player != null && !client.player.getAbilities().allowFlying) {
@@ -244,6 +247,37 @@ public final class HauntModules {
             }
         }
         if (bestSlot != currentSlot) client.player.getInventory().selectedSlot = bestSlot;
+    }
+
+    /** Moves a totem from the main inventory or hotbar into the offhand using normal inventory clicks. */
+    private static void tickAutoTotem(MinecraftClient client) {
+        if (client.player == null || client.interactionManager == null
+            || client.currentScreen != null) return;
+
+        var player = client.player;
+        if (player.getOffHandStack().isOf(Items.TOTEM_OF_UNDYING)
+            || !player.currentScreenHandler.getCursorStack().isEmpty()) return;
+
+        int inventorySlot = -1;
+        for (int i = 0; i < 36; i++) {
+            if (player.getInventory().getStack(i).isOf(Items.TOTEM_OF_UNDYING)) {
+                inventorySlot = i;
+                break;
+            }
+        }
+        if (inventorySlot < 0) return;
+
+        // PlayerScreenHandler maps hotbar inventory slots 0-8 to handler slots 36-44.
+        int sourceHandlerSlot = inventorySlot < 9 ? inventorySlot + 36 : inventorySlot;
+        int offhandHandlerSlot = 45;
+        int syncId = player.currentScreenHandler.syncId;
+
+        client.interactionManager.clickSlot(syncId, sourceHandlerSlot, 0,
+            SlotActionType.PICKUP, player);
+        client.interactionManager.clickSlot(syncId, offhandHandlerSlot, 0,
+            SlotActionType.PICKUP, player);
+        client.interactionManager.clickSlot(syncId, sourceHandlerSlot, 0,
+            SlotActionType.PICKUP, player);
     }
 
     /** Eats the best available hotbar food when hunger drops to 16 or less. */

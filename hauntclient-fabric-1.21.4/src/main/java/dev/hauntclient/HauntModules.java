@@ -16,7 +16,7 @@ import net.minecraft.item.Items;
 import net.minecraft.util.math.Box;
 import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.VertexConsumer;
-import net.minecraft.client.render.TextRenderer;
+import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.Vec3d;

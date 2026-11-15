@@ -55,6 +55,7 @@ public final class HauntModules {
         KEYSTROKES("Keystrokes", "Show movement key states", Category.HUD),
         ARMOR_HUD("Armor HUD", "Show equipped armor", Category.PLAYER),
         TOGGLE_SPRINT("Toggle Sprint", "Sprint while moving forward", Category.MOVEMENT),
+        AUTOWALK("AutoWalk", "Automatically walk forward while enabled", Category.MOVEMENT),
         FLY("Fly", "Flight only when the server grants flight permission", Category.MOVEMENT),
         BLOCK_INSPECTOR("Block Inspector", "Show the block currently under your crosshair", Category.WORLD),
         FOLLOW_PLAYER("Follow Assist", "Smoothly tracks the nearest player; hold W to follow", Category.PLAYER),
@@ -144,6 +145,7 @@ public final class HauntModules {
             if (module == Module.FREECAM) stopFreecam(client);
             if (module == Module.AUTO_EAT) stopAutoEat(client);
             if (module == Module.FREELOOK) Freelook.stop(client);
+            if (module == Module.AUTOWALK && client.options != null) client.options.forwardKey.setPressed(false);
         } else {
             ENABLED.add(module);
             if (module == Module.FREELOOK) Freelook.start(client);
@@ -163,6 +165,12 @@ public final class HauntModules {
     }
 
     public static void tick(MinecraftClient client) {
+        if (isEnabled(Module.AUTOWALK) && client.player != null && client.world != null
+            && client.currentScreen == null && !client.player.isSpectator()) {
+            client.options.forwardKey.setPressed(true);
+        } else if (isEnabled(Module.AUTOWALK) && client.options != null && client.currentScreen != null) {
+            client.options.forwardKey.setPressed(false);
+        }
         if (isEnabled(Module.FREECAM)) tickFreecam(client);
         if (isEnabled(Module.FREELOOK)) Freelook.tick(client);
         if (isEnabled(Module.AUTO_TOOLS)) tickAutoTools(client);

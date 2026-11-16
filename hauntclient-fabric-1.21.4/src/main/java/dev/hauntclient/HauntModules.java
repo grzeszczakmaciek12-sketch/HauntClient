@@ -418,8 +418,16 @@ public final class HauntModules {
         double horizontal = Math.sqrt(delta.x * delta.x + delta.z * delta.z);
         float wantedYaw = (float)(Math.toDegrees(Math.atan2(delta.z, delta.x)) - 90.0);
         float wantedPitch = (float)-Math.toDegrees(Math.atan2(delta.y, horizontal));
-        client.player.setYaw(client.player.getYaw()
-            + MathHelper.wrapDegrees(wantedYaw - client.p    private static void tickKillAura(MinecraftClient client) {
+        float yaw = client.player.getYaw()
+            + MathHelper.wrapDegrees(wantedYaw - client.player.getYaw()) * 0.18f;
+        float pitch = client.player.getPitch()
+            + (wantedPitch - client.player.getPitch()) * 0.18f;
+        client.player.setYaw(yaw);
+        client.player.setPitch(MathHelper.clamp(pitch, -90.0f, 90.0f));
+    }
+
+    /** PvE-only combat helper: hostile mobs and armor-stand training dummies. */
+    private static void tickKillAura(MinecraftClient client) {
         if (client.player == null || client.world == null || client.interactionManager == null
             || client.currentScreen != null || client.player.isSpectator()) return;
 
@@ -453,11 +461,6 @@ public final class HauntModules {
         }
 
         if (target != null && client.player.getAttackCooldownProgress(0.5f) >= 1.0f) {
-            client.interactionManager.attackEntity(client.player, target);
-            client.player.swingHand(Hand.MAIN_HAND);
-        }
-    }
-getAttackCooldownProgress(0.5f) >= 1.0f) {
             client.interactionManager.attackEntity(client.player, target);
             client.player.swingHand(Hand.MAIN_HAND);
         }

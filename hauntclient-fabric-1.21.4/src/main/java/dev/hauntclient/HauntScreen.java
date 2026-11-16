@@ -130,8 +130,9 @@ public class HauntScreen extends Screen {
             ctx.drawText(textRenderer, desc, left + 9, top + 20, MUTED, false);
             int bx = right - 36;
             ctx.fill(bx, top + 13, bx + 26, top + 27, enabled ? 0xFFB65D37 : 0xFF51465A);
-            ctx.fill(enabled ? bx + 19 : bx + 3, top + 21,
-                enabled ? bx + 31 : bx + 15, top + 35, WHITE);
+            // Keep the toggle thumb fully inside its track so it cannot look like an X.
+            int thumbLeft = enabled ? bx + 13 : bx + 3;
+            ctx.fill(thumbLeft, top + 15, thumbLeft + 10, top + 25, WHITE);
             // Compact clickable bind field, similar to the keybind capture UI in client menus.
             int bindLeft = left + 8;
             int bindRight = right - 8;

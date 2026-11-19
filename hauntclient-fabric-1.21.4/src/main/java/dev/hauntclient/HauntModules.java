@@ -62,6 +62,7 @@ public final class HauntModules {
         BLOCK_INSPECTOR("Block Inspector", "Show the block currently under your crosshair", Category.WORLD),
         AIM_ASSIST("Aim Assist", "Smoothly tracks nearby hostile mobs; no player targeting or attacks", Category.COMBAT),
         KILL_AURA("Kill Aura", "Attacks nearby hostile mobs and training dummies; never targets players", Category.COMBAT),
+        PLAYER_TRACKER("Player Tracker", "Tracks the nearest visible player without attacking", Category.COMBAT),
         XCARRY("XCarry", "Keep crafting-grid items when closing inventory", Category.PLAYER),
         FREECAM("Freecam", "Move the camera while your player stays still", Category.MOVEMENT),
         AUTO_TOOLS("Auto Tools", "Automatically select the best hotbar tool for the block you mine", Category.PLAYER),
@@ -104,6 +105,7 @@ public final class HauntModules {
     private static int scanIndex;
     private static BlockPos scanOrigin;
     private static HostileEntity followTarget;
+    private static PlayerEntity trackedPlayer;
     private static ArmorStandEntity freecamCamera;
     private static boolean autoEatUsing;
     private static int autoEatPreviousSlot = -1;
@@ -200,6 +202,8 @@ public final class HauntModules {
         if (isEnabled(Module.AIM_ASSIST)) updateFollowAssist(client);
         else followTarget = null;
         if (isEnabled(Module.KILL_AURA)) tickKillAura(client);
+        if (isEnabled(Module.PLAYER_TRACKER)) updatePlayerTracker(client);
+        else trackedPlayer = null;
         if (isEnabled(Module.XRAY) && client.player != null && client.world != null) {
             scanNearbyOresIncrementally(client);
         }
@@ -424,6 +428,26 @@ public final class HauntModules {
             + (wantedPitch - client.player.getPitch()) * 0.18f;
         client.player.setYaw(yaw);
         client.player.setPitch(MathHelper.clamp(pitch, -90.0f, 90.0f));
+    }
+
+    /** Selects the nearest visible player for a non-attacking HUD indicator. */
+    private static void updatePlayerTracker(MinecraftClient client) {
+        if (client.player == null || client.world == null || client.currentScreen != null) {
+            trackedPlayer = null;
+            return;
+        }
+        PlayerEntity nearest = null;
+        double nearestDistance = 32.0 * 32.0;
+        for (PlayerEntity candidate : client.world.getPlayers()) {
+            if (candidate == client.player || candidate.isSpectator() || !candidate.isAlive()
+                || !client.player.canSee(candidate)) continue;
+            double distance = client.player.squaredDistanceTo(candidate);
+            if (distance < nearestDistance) {
+                nearestDistance = distance;
+                nearest = candidate;
+            }
+        }
+        trackedPlayer = nearest;
     }
 
     /** PvE-only combat helper: hostile mobs and armor-stand training dummies. */
@@ -806,6 +830,15 @@ public final class HauntModules {
                 drawLine(context, "AIM ASSIST: " + followTarget.getName().getString() + "  " + String.format(java.util.Locale.ROOT, "%.1fm", client.player.distanceTo(followTarget)), x, y);
             } else {
                 drawLine(context, "AIM ASSIST: waiting for a hostile mob", x, y);
+            }
+            y += 12;
+        }
+        if (isEnabled(Module.PLAYER_TRACKER)) {
+            if (trackedPlayer != null) {
+                drawLine(context, "PLAYER TRACKER: " + trackedPlayer.getName().getString() + "  "
+                    + String.format(java.util.Locale.ROOT, "%.1fm", client.player.distanceTo(trackedPlayer)), x, y);
+            } else {
+                drawLine(context, "PLAYER TRACKER: no visible players nearby", x, y);
             }
             y += 12;
         }
